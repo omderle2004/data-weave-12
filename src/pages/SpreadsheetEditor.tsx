@@ -9,13 +9,21 @@ import {
   Merge, DollarSign, Percent, Hash, Calendar, Grid3x3,
   Share, Users, User, ZoomIn, Wifi, ChevronDown, Search,
   Sparkles, BarChart3, Code2, Settings, Send, Paperclip,
-  Image, ChevronLeft, ChevronRight, X
+  Image, ChevronLeft, ChevronRight, X, Undo, Redo, Scissors,
+  Copy, FileText, Calculator, PieChart, Table, CheckSquare,
+  Palette, ArrowUpDown, Trash2, ExternalLink, BookOpen,
+  Github, Twitter, Mail, Database, Upload, FileUp, Link
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -67,20 +75,235 @@ export default function SpreadsheetEditor() {
             <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded"></div>
           </div>
           
-          {["File", "Edit", "View", "Insert", "Format", "Help", "Feedback"].map((menu) => (
-            <DropdownMenu key={menu}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                  {menu}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>New</DropdownMenuItem>
-                <DropdownMenuItem>Open</DropdownMenuItem>
-                <DropdownMenuItem>Save</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ))}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                File
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <FileText className="h-4 w-4 mr-2" />
+                New
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Upload className="h-4 w-4 mr-2" />
+                Open
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <FileUp className="h-4 w-4 mr-2" />
+                Save
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Database className="h-4 w-4 mr-2" />
+                Import
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Share className="h-4 w-4 mr-2" />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Edit
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <Undo className="h-4 w-4 mr-2" />
+                Undo
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Redo className="h-4 w-4 mr-2" />
+                Redo
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Scissors className="h-4 w-4 mr-2" />
+                Cut
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <FileText className="h-4 w-4 mr-2" />
+                Paste
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Search className="h-4 w-4 mr-2" />
+                Find & Replace
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                View
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuCheckboxItem checked>
+                Show row numbers
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked>
+                Show column headers
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked>
+                Show grid lines
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <ZoomIn className="h-4 w-4 mr-2" />
+                Zoom
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Eye className="h-4 w-4 mr-2" />
+                Presentation mode
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Insert
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <Code2 className="h-4 w-4 mr-2" />
+                Code cell
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Chart
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Table className="h-4 w-4 mr-2" />
+                Table
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Checkbox
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Plus className="h-4 w-4 mr-2" />
+                New sheet
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Format
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Hash className="h-4 w-4 mr-2" />
+                  Number
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem>Automatic</DropdownMenuItem>
+                  <DropdownMenuItem>Number</DropdownMenuItem>
+                  <DropdownMenuItem>Percent</DropdownMenuItem>
+                  <DropdownMenuItem>Currency</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Date
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem>Date</DropdownMenuItem>
+                  <DropdownMenuItem>Time</DropdownMenuItem>
+                  <DropdownMenuItem>Date time</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Bold className="h-4 w-4 mr-2" />
+                Bold
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Italic className="h-4 w-4 mr-2" />
+                Italic
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Palette className="h-4 w-4 mr-2" />
+                Text color
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear formatting
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Help
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Documentation
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Calculator className="h-4 w-4 mr-2" />
+                Quadratic 101
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Forum
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Github className="h-4 w-4 mr-2" />
+                GitHub
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                External resources
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Feedback
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <Mail className="h-4 w-4 mr-2" />
+                Contact us
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Twitter className="h-4 w-4 mr-2" />
+                Twitter/X
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Community
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Middle Section - Cell Reference & Formatting */}

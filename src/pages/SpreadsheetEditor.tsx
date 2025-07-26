@@ -12,7 +12,7 @@ import {
   Image, ChevronLeft, ChevronRight, X, Undo, Redo, Scissors,
   Copy, FileText, Calculator, PieChart, Table, CheckSquare,
   Palette, ArrowUpDown, Trash2, ExternalLink, BookOpen,
-  Github, Twitter, Mail, Database, Upload, FileUp, Link
+  Github, Twitter, Mail, Database, Upload, FileUp, Link, Code
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -616,16 +616,124 @@ export default function SpreadsheetEditor() {
               </Button>
             </div>
             
-            <div className="space-y-4">
-              <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
-                <div className="text-sm text-muted-foreground mb-4">
-                  Drag and drop a file (CSV, Excel, Parquet)<br />
-                  or use a connection (Postgres, MySQL,<br />
-                  and more).
+            <div className="space-y-6">
+              {/* Upload Section */}
+              <div>
+                <h4 className="text-sm font-medium mb-3">Data from...</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Local file</div>
+                      <div className="text-xs text-muted-foreground">csv, xlsx, pqt, grid</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Code className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">API</div>
+                      <div className="text-xs text-muted-foreground">Fetch data over HTTP with code</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Examples</div>
+                      <div className="text-xs text-muted-foreground">Files from the Quadratic team</div>
+                    </div>
+                  </div>
                 </div>
-                <Button className="mb-3">Upload file</Button>
-                <br />
-                <Button variant="outline">Use connection</Button>
+              </div>
+
+              {/* Database Connections */}
+              <div>
+                <h4 className="text-sm font-medium mb-3">Connect and pull data form your own external data source:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">MySQL</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Postgres</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-red-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">MS SQL Server</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-cyan-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Snowflake</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">CockroachDB</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-blue-400 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">BigQuery</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">MariaDB</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Supabase</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-indigo-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Neon</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data from connections */}
+              <div>
+                <h4 className="text-sm font-medium mb-3">Data from connections</h4>
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Database className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="font-medium">[Demo] Quadratic public data</div>
+                    <div className="text-xs text-muted-foreground">Postgres</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -29,14 +29,6 @@ export function MainLayout({ children }: MainLayoutProps) {
             </div>
             
             <div className="flex items-center gap-3">
-              <Button variant="workspace" size="sm">
-                <Upload className="mr-2 h-4 w-4" />
-                Import
-              </Button>
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                New File
-              </Button>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                 <Bell className="h-4 w-4" />
               </Button>

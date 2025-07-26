@@ -3,8 +3,11 @@ import { FileGrid } from "@/components/dashboard/FileGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Upload, Search, Filter } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Files() {
+  const navigate = useNavigate();
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -21,7 +24,7 @@ export default function Files() {
             <Upload className="mr-2 h-4 w-4" />
             Import
           </Button>
-          <Button>
+          <Button onClick={() => navigate('/editor')}>
             <Plus className="mr-2 h-4 w-4" />
             New File
           </Button>

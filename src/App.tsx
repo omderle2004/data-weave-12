@@ -10,6 +10,7 @@ import Files from "./pages/Files";
 import Connections from "./pages/Connections";
 import Settings from "./pages/Settings";
 import Members from "./pages/Members";
+import SpreadsheetEditor from "./pages/SpreadsheetEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/connections" element={<Connections />} />
             <Route path="/members" element={<Members />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/editor" element={<SpreadsheetEditor />} />
             <Route path="/examples" element={<Dashboard />} />
             <Route path="/docs" element={<Dashboard />} />
             <Route path="/support" element={<Dashboard />} />

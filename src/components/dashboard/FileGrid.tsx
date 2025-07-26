@@ -140,7 +140,7 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => window.location.href = '/editor'}>
           <Eye className="mr-2 h-4 w-4" />
           Open
         </DropdownMenuItem>
@@ -186,6 +186,7 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
               <div
                 key={file.id}
                 className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-file-hover transition-colors cursor-pointer group"
+                onClick={() => window.location.href = '/editor'}
               >
                 <Icon className="h-5 w-5 text-primary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -224,7 +225,11 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
           const badge = getTypeBadge(file.type);
           
           return (
-            <Card key={file.id} className="hover:bg-file-hover transition-colors cursor-pointer group">
+            <Card 
+              key={file.id} 
+              className="hover:bg-file-hover transition-colors cursor-pointer group"
+              onClick={() => window.location.href = '/editor'}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">

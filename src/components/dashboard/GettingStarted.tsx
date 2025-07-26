@@ -87,7 +87,16 @@ export function GettingStarted() {
                   </div>
                 </div>
               </div>
-              <Button variant="workspace" size="sm" disabled={item.completed}>
+              <Button 
+                variant="workspace" 
+                size="sm" 
+                disabled={item.completed}
+                onClick={() => {
+                  if (item.id === "create-file") {
+                    window.location.href = '/editor';
+                  }
+                }}
+              >
                 {item.completed ? "Completed" : item.action}
               </Button>
             </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -47,6 +47,14 @@ export default function SpreadsheetEditor() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [cells, setCells] = useState<Record<string, Cell>>({});
+
+  // Check URL params to auto-open import modal
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'import') {
+      setShowImportModal(true);
+    }
+  }, []);
 
   // Generate grid data
   const columns = Array.from({ length: 15 }, (_, i) => String.fromCharCode(65 + i));

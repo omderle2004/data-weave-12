@@ -8,6 +8,11 @@ import { useNavigate } from "react-router-dom";
 export default function Files() {
   const navigate = useNavigate();
 
+  const handleImport = () => {
+    // Navigate to editor with import mode
+    navigate('/editor?mode=import');
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -20,7 +25,7 @@ export default function Files() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="workspace">
+          <Button variant="workspace" onClick={handleImport}>
             <Upload className="mr-2 h-4 w-4" />
             Import
           </Button>

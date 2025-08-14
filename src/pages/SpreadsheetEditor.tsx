@@ -14,6 +14,9 @@ import {
   Palette, ArrowUpDown, Trash2, ExternalLink, BookOpen,
   Github, Twitter, Mail, Database, Upload, FileUp, Link, Code
 } from "lucide-react";
+import { FileImport } from "@/components/FileImport";
+import { ResizableQuestionPanel } from "@/components/ResizableQuestionPanel";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +50,7 @@ export default function SpreadsheetEditor() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [cells, setCells] = useState<Record<string, Cell>>({});
+  const [importedData, setImportedData] = useState<string[][] | null>(null);
 
   // Check URL params to auto-open import modal
   useEffect(() => {
@@ -73,10 +77,48 @@ export default function SpreadsheetEditor() {
     }));
   };
 
+  const handleDataImport = (data: string[][]) => {
+    setImportedData(data);
+    const newCells: Record<string, Cell> = {};
+    
+    data.forEach((row, rowIndex) => {
+      row.forEach((cellValue, colIndex) => {
+        if (colIndex < columns.length && rowIndex < rows.length) {
+          const cellId = getCellId(columns[colIndex], rowIndex + 1);
+          newCells[cellId] = {
+            id: cellId,
+            value: cellValue || '',
+            type: 'text'
+          };
+        }
+      });
+    });
+    
+    setCells(newCells);
+  };
+
+  const handleSendMessage = () => {
+    if (!chatMessage.trim()) return;
+    
+    toast.success('Message sent! (This is a demo - no AI response yet)');
+    setChatMessage('');
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Top Navigation */}
       <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between">
+        {/* Import Data Button */}
+        <div className="absolute top-20 left-4 z-20">
+          <Button 
+            onClick={() => setShowImportModal(true)}
+            className="h-9 px-4"
+            variant="outline"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import Data
+          </Button>
+        </div>
         {/* Left Section - Menus */}
         <div className="flex items-center gap-1">
           <div className="flex items-center gap-1 mr-4">
@@ -512,64 +554,70 @@ export default function SpreadsheetEditor() {
           </div>
         )}
 
-        {/* Main Content */}
+        {/* Main Content with Resizable Question Panel */}
         <div className="flex-1 flex flex-col">
-          {/* Spreadsheet Grid */}
-          <div className="flex-1 overflow-auto">
-            <div className="relative">
-              {/* Column Headers */}
-              <div className="sticky top-0 z-10 flex bg-muted border-b border-border">
-                <div className="w-12 h-8 border-r border-border bg-muted"></div>
-                {columns.map((col) => (
-                  <div 
-                    key={col}
-                    className="w-24 h-8 border-r border-border flex items-center justify-center text-sm font-medium"
-                  >
-                    {col}
+          <ResizableQuestionPanel
+            chatMessage={chatMessage}
+            setChatMessage={setChatMessage}
+            onSendMessage={handleSendMessage}
+          >
+            {/* Spreadsheet Grid */}
+            <div className="h-full overflow-auto relative">
+              <div className="relative pt-12">
+                {/* Column Headers */}
+                <div className="sticky top-0 z-10 flex bg-muted border-b border-border">
+                  <div className="w-12 h-8 border-r border-border bg-muted"></div>
+                  {columns.map((col) => (
+                    <div 
+                      key={col}
+                      className="w-24 h-8 border-r border-border flex items-center justify-center text-sm font-medium"
+                    >
+                      {col}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Rows */}
+                {rows.map((row) => (
+                  <div key={row} className="flex border-b border-border">
+                    {/* Row Header */}
+                    <div className="w-12 h-8 border-r border-border bg-muted flex items-center justify-center text-sm font-medium">
+                      {row}
+                    </div>
+                    
+                    {/* Cells */}
+                    {columns.map((col) => {
+                      const cellId = getCellId(col, row);
+                      const isSelected = selectedCell === cellId;
+                      
+                      return (
+                        <div
+                          key={cellId}
+                          className={`w-24 h-8 border-r border-border relative cursor-cell ${
+                            isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => setSelectedCell(cellId)}
+                          onDoubleClick={() => setShowCellTypeModal(true)}
+                        >
+                          <input
+                            className="w-full h-full px-2 text-sm bg-transparent border-none outline-none"
+                            value={getCellValue(cellId)}
+                            onChange={(e) => updateCell(cellId, e.target.value)}
+                            onFocus={() => setSelectedCell(cellId)}
+                          />
+                          {isSelected && getCellValue(cellId) === "" && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="text-xs text-muted-foreground">Press / to code</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
-
-              {/* Rows */}
-              {rows.map((row) => (
-                <div key={row} className="flex border-b border-border">
-                  {/* Row Header */}
-                  <div className="w-12 h-8 border-r border-border bg-muted flex items-center justify-center text-sm font-medium">
-                    {row}
-                  </div>
-                  
-                  {/* Cells */}
-                  {columns.map((col) => {
-                    const cellId = getCellId(col, row);
-                    const isSelected = selectedCell === cellId;
-                    
-                    return (
-                      <div
-                        key={cellId}
-                        className={`w-24 h-8 border-r border-border relative cursor-cell ${
-                          isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-muted/50'
-                        }`}
-                        onClick={() => setSelectedCell(cellId)}
-                        onDoubleClick={() => setShowCellTypeModal(true)}
-                      >
-                        <input
-                          className="w-full h-full px-2 text-sm bg-transparent border-none outline-none"
-                          value={getCellValue(cellId)}
-                          onChange={(e) => updateCell(cellId, e.target.value)}
-                          onFocus={() => setSelectedCell(cellId)}
-                        />
-                        {isSelected && getCellValue(cellId) === "" && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-xs text-muted-foreground">Press / to code</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
             </div>
-          </div>
+          </ResizableQuestionPanel>
 
           {/* Sheet Tabs */}
           <div className="h-12 border-t border-border bg-card flex items-center px-4 justify-between">
@@ -585,13 +633,6 @@ export default function SpreadsheetEditor() {
             </div>
             
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowImportModal(true)}
-              >
-                Import data
-              </Button>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>Connected</span>
@@ -601,143 +642,12 @@ export default function SpreadsheetEditor() {
           </div>
         </div>
 
-        {/* Right Panel for Import Data */}
-        {showImportModal && (
-          <div className="w-80 border-l border-border bg-card p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold">Import data</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0"
-                onClick={() => setShowImportModal(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="space-y-6">
-              {/* Upload Section */}
-              <div>
-                <h4 className="text-sm font-medium mb-3">Data from...</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Upload className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Local file</div>
-                      <div className="text-xs text-muted-foreground">csv, xlsx, pqt, grid</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Code className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-medium">API</div>
-                      <div className="text-xs text-muted-foreground">Fetch data over HTTP with code</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Examples</div>
-                      <div className="text-xs text-muted-foreground">Files from the Quadratic team</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Database Connections */}
-              <div>
-                <h4 className="text-sm font-medium mb-3">Connect and pull data form your own external data source:</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">MySQL</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">Postgres</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-red-500 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">MS SQL Server</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-cyan-500 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">Snowflake</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">CockroachDB</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-blue-400 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">BigQuery</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">MariaDB</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">Supabase</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                    <div className="w-6 h-6 bg-indigo-500 rounded flex items-center justify-center">
-                      <Database className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">Neon</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Data from connections */}
-              <div>
-                <h4 className="text-sm font-medium mb-3">Data from connections</h4>
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <div className="font-medium">[Demo] Quadratic public data</div>
-                    <div className="text-xs text-muted-foreground">Postgres</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* File Import Panel */}
+        <FileImport
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onDataImport={handleDataImport}
+        />
       </div>
 
       {/* Cell Type Modal */}

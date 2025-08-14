@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { 
   MessageSquare, 
-  Send, 
   Download, 
-  Upload, 
+  Upload,
   Plus,
   Database,
   Server,
@@ -16,31 +14,33 @@ import {
   Cloud,
   Layers,
   FileSpreadsheet,
-  Globe
+  Brain
 } from "lucide-react";
 import { SpreadsheetGrid } from "@/components/SpreadsheetGrid";
 import { FileUpload } from "@/components/FileUpload";
 import { VoiceInput } from "@/components/VoiceInput";
+import { AIAnalysisPanel } from "@/components/AIAnalysisPanel";
 
 export default function SpreadsheetEditor() {
   const [spreadsheetData, setSpreadsheetData] = useState<Record<string, string>>({});
   const [selectedCell, setSelectedCell] = useState<string>("A1");
-  const [chatMessage, setChatMessage] = useState("");
+  const [fileName, setFileName] = useState<string>("");
 
-  const handleFileUpload = (data: string[][]) => {
+  const handleFileUpload = (data: string[][], uploadedFileName: string) => {
     const newData: Record<string, string> = {};
-    const columns = Array.from({ length: 15 }, (_, i) => String.fromCharCode(65 + i));
+    const columns = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
     
     data.forEach((row, rowIndex) => {
       row.forEach((cell, colIndex) => {
-        if (colIndex < columns.length && rowIndex < 30) {
+        if (colIndex < columns.length && rowIndex < 100) {
           const cellId = `${columns[colIndex]}${rowIndex + 1}`;
-          newData[cellId] = cell;
+          newData[cellId] = cell ? String(cell) : "";
         }
       });
     });
     
     setSpreadsheetData(newData);
+    setFileName(uploadedFileName);
   };
 
   const handleCellChange = (cellId: string, value: string) => {
@@ -50,18 +50,49 @@ export default function SpreadsheetEditor() {
     }));
   };
 
-  const handleVoiceInput = (text: string) => {
-    setChatMessage(text);
+  const exportData = () => {
+    const dataEntries = Object.entries(spreadsheetData).filter(([_, value]) => value.trim() !== "");
+    if (dataEntries.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    // Convert to CSV format
+    const maxRow = Math.max(...dataEntries.map(([cellId]) => parseInt(cellId.match(/\d+/)?.[0] || "0")));
+    const columns = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
+    
+    let csvContent = "";
+    for (let row = 1; row <= maxRow; row++) {
+      const rowData = columns.map(col => spreadsheetData[`${col}${row}`] || "");
+      csvContent += rowData.join(",") + "\n";
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName ? fileName.replace(/\.[^/.]+$/, "") + "_exported.csv" : "spreadsheet_export.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   return (
-    <ResizablePanelGroup direction="vertical" className="h-screen">
+    <ResizablePanelGroup direction="horizontal" className="h-screen">
       <ResizablePanel defaultSize={70} minSize={50}>
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="border-b bg-card p-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold">Sheet Editor</h1>
+              <div>
+                <h1 className="text-2xl font-bold">SmartBiz AI Spreadsheet</h1>
+                {fileName && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Current file: {fileName}
+                  </p>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <FileUpload onFileUpload={handleFileUpload} />
                 <Dialog>
@@ -137,42 +168,6 @@ export default function SpreadsheetEditor() {
 
                       <Card className="p-4">
                         <div className="flex items-center gap-2 mb-3">
-                          <Database className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold">CockroachDB</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">Connect to CockroachDB</p>
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Plus className="h-4 w-4 mr-1" />
-                          Connect
-                        </Button>
-                      </Card>
-
-                      <Card className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Cloud className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold">BigQuery</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">Connect to Google BigQuery</p>
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Plus className="h-4 w-4 mr-1" />
-                          Connect
-                        </Button>
-                      </Card>
-
-                      <Card className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Database className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold">MariaDB</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">Connect to MariaDB</p>
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Plus className="h-4 w-4 mr-1" />
-                          Connect
-                        </Button>
-                      </Card>
-
-                      <Card className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
                           <Layers className="h-5 w-5 text-primary" />
                           <h3 className="font-semibold">Supabase</h3>
                         </div>
@@ -182,22 +177,10 @@ export default function SpreadsheetEditor() {
                           Connect
                         </Button>
                       </Card>
-
-                      <Card className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Database className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold">Neon</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">Connect to Neon database</p>
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Plus className="h-4 w-4 mr-1" />
-                          Connect
-                        </Button>
-                      </Card>
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button variant="outline" size="sm" className="h-8">
+                <Button variant="outline" size="sm" className="h-8" onClick={exportData}>
                   <Download className="h-4 w-4 mr-1" />
                   Export
                 </Button>
@@ -206,7 +189,7 @@ export default function SpreadsheetEditor() {
           </div>
 
           {/* Spreadsheet Area */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden p-4">
             <SpreadsheetGrid 
               data={spreadsheetData}
               onCellChange={handleCellChange}
@@ -219,28 +202,14 @@ export default function SpreadsheetEditor() {
       
       <ResizableHandle />
       
-      {/* Ask Question Section - Sticky and Resizable */}
-      <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-        <div className="bg-card border-t p-6 h-full sticky bottom-0 z-10">
-          <div className="flex items-center gap-2 mb-4">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold text-lg">Ask Me Question</h3>
+      {/* AI Analysis Panel */}
+      <ResizablePanel defaultSize={30} minSize={25} maxSize={50}>
+        <div className="bg-card border-l p-6 h-full overflow-auto">
+          <div className="flex items-center gap-2 mb-6">
+            <Brain className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold text-lg">AI Data Analysis</h3>
           </div>
-          <div className="flex gap-3 h-[calc(100%-3rem)]">
-            <Textarea 
-              placeholder="Type your question here..." 
-              className="flex-1 min-h-[120px] resize-none"
-              rows={5}
-              value={chatMessage}
-              onChange={(e) => setChatMessage(e.target.value)}
-            />
-            <div className="flex flex-col gap-3">
-              <VoiceInput onVoiceInput={handleVoiceInput} />
-              <Button size="sm" className="h-10 px-4">
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <AIAnalysisPanel data={spreadsheetData} />
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>

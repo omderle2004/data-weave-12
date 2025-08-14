@@ -51,6 +51,7 @@ export default function SpreadsheetEditor() {
   const [chatMessage, setChatMessage] = useState("");
   const [cells, setCells] = useState<Record<string, Cell>>({});
   const [importedData, setImportedData] = useState<string[][] | null>(null);
+  const [showSidebarToggle, setShowSidebarToggle] = useState(false);
 
   // Check URL params to auto-open import modal
   useEffect(() => {
@@ -104,10 +105,27 @@ export default function SpreadsheetEditor() {
     setChatMessage('');
   };
 
+  // Watch for sidebar state changes
+  useEffect(() => {
+    setShowSidebarToggle(!sidebarOpen);
+  }, [sidebarOpen]);
+
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Sidebar Toggle Button (when sidebar is closed) */}
+      {showSidebarToggle && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="fixed top-4 left-4 z-50 h-8 w-8 p-0"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      )}
+
       {/* Top Navigation */}
-      <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between">
+      <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between shrink-0">
         {/* Import Data Button */}
         <div className="absolute top-20 left-4 z-20">
           <Button 
@@ -450,10 +468,10 @@ export default function SpreadsheetEditor() {
         </div>
       </header>
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex min-h-0">
         {/* Left Sidebar */}
         {sidebarOpen && (
-          <div className="w-80 border-r border-border bg-card flex flex-col">
+          <div className="w-80 max-w-[30vw] min-w-[280px] border-r border-border bg-card flex flex-col shrink-0">
             {/* Sidebar Header */}
             <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between">

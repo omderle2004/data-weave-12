@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -44,6 +45,7 @@ interface Cell {
 }
 
 export default function SpreadsheetEditor() {
+  const navigate = useNavigate();
   const [selectedCell, setSelectedCell] = useState<string>("A1");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showCellTypeModal, setShowCellTypeModal] = useState(false);
@@ -145,9 +147,18 @@ export default function SpreadsheetEditor() {
             Import Data
           </Button>
         </div>
-        {/* Left Section - Menus */}
+        {/* Left Section - Back Button & Menus */}
         <div className="flex items-center gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-1 mr-2 lg:mr-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 lg:h-8 px-1 lg:px-2 mr-1 lg:mr-2"
+              onClick={() => navigate("/dashboard")}
+            >
+              <ChevronLeft className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+              <span className="text-xs lg:text-sm">Back</span>
+            </Button>
             <div className="w-5 h-5 lg:w-6 lg:h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded shrink-0"></div>
           </div>
           
@@ -546,37 +557,6 @@ export default function SpreadsheetEditor() {
               </div>
             </div>
 
-            {/* Chat Input */}
-            <div className="mt-auto p-4 border-t border-border">
-              <div className="space-y-3">
-                <div className="relative">
-                  <Input 
-                    placeholder="Ask a question..."
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    className="pr-20"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <Paperclip className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <Image className="h-3 w-3" />
-                    </Button>
-                    <Button size="sm" className="h-6 w-6 p-0">
-                      <Send className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Model: Basic</span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs">
-                    Learn more
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 

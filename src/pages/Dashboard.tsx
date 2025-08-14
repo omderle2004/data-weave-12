@@ -4,6 +4,7 @@ import { FileGrid } from "@/components/dashboard/FileGrid";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Upload, Database, Users, TrendingUp, Clock } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   return (
@@ -17,13 +18,17 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="workspace">
-            <Upload className="mr-2 h-4 w-4" />
-            Import File
+          <Button variant="workspace" asChild>
+            <Link to="/editor">
+              <Upload className="mr-2 h-4 w-4" />
+              Import File
+            </Link>
           </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create New
+          <Button asChild>
+            <Link to="/editor">
+              <Plus className="mr-2 h-4 w-4" />
+              Create New
+            </Link>
           </Button>
         </div>
       </div>

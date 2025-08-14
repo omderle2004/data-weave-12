@@ -3,41 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 
 interface FileUploadProps {
-  onFileUpload?: (data: any[][], fileName: string) => void;
+  onFileUpload?: (data: any[][]) => void;
   accept?: string;
 }
 
 export function FileUpload({ onFileUpload, accept = ".csv,.xlsx,.xls" }: FileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
   const handleFileClick = () => {
     fileInputRef.current?.click();
-  };
-
-  const uploadToSupabase = async (file: File) => {
-    try {
-      const userId = 'anonymous'; // For now, using anonymous until auth is implemented
-      const fileName = `${userId}/${Date.now()}_${file.name}`;
-      
-      const { data, error } = await supabase.storage
-        .from('spreadsheets')
-        .upload(fileName, file);
-
-      if (error) {
-        console.error('Upload error:', error);
-        return null;
-      }
-
-      return data.path;
-    } catch (error) {
-      console.error('Storage upload failed:', error);
-      return null;
-    }
   };
 
   const parseExcel = (file: File): Promise<string[][]> => {
@@ -79,9 +55,6 @@ export function FileUpload({ onFileUpload, accept = ".csv,.xlsx,.xls" }: FileUpl
     if (!file) return;
 
     try {
-      // Upload to Supabase storage first
-      const filePath = await uploadToSupabase(file);
-      
       let data: string[][];
       
       if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
@@ -91,35 +64,14 @@ export function FileUpload({ onFileUpload, accept = ".csv,.xlsx,.xls" }: FileUpl
                  file.type === 'application/vnd.ms-excel') {
         data = await parseExcel(file);
       } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload a CSV or Excel file (.csv, .xlsx, .xls).",
-          variant: "destructive",
-        });
+        alert('Please upload a CSV or Excel file (.csv, .xlsx, .xls).');
         return;
       }
 
-      onFileUpload?.(data, file.name);
-
-      if (filePath) {
-        toast({
-          title: "File uploaded successfully",
-          description: `${file.name} has been uploaded and parsed.`,
-        });
-      } else {
-        toast({
-          title: "File parsed successfully",
-          description: `${file.name} has been parsed. Note: Storage upload failed but data is displayed.`,
-        });
-      }
-
+      onFileUpload?.(data);
     } catch (error) {
-      console.error('Error processing file:', error);
-      toast({
-        title: "Error processing file",
-        description: "Please ensure it's a valid CSV or Excel file.",
-        variant: "destructive",
-      });
+      console.error('Error parsing file:', error);
+      alert('Error parsing file. Please ensure it\'s a valid CSV or Excel file.');
     }
 
     // Reset the input

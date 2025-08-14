@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { SpreadsheetGrid } from "@/components/SpreadsheetGrid";
+import { VoiceInput } from "@/components/VoiceInput";
+import { FileUpload } from "@/components/FileUpload";
 import { 
   File, Edit3, Eye, Plus, Type, HelpCircle, MessageSquare,
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
@@ -47,6 +50,7 @@ export default function SpreadsheetEditor() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [cells, setCells] = useState<Record<string, Cell>>({});
+  const [spreadsheetData, setSpreadsheetData] = useState<Record<string, string>>({});
 
   // Check URL params to auto-open import modal
   useEffect(() => {
@@ -71,6 +75,37 @@ export default function SpreadsheetEditor() {
       ...prev,
       [cellId]: { id: cellId, value, type: 'text' }
     }));
+    setSpreadsheetData(prev => ({
+      ...prev,
+      [cellId]: value
+    }));
+  };
+
+  const handleFileUpload = (data: string[][]) => {
+    const newData: Record<string, string> = {};
+    const columns = Array.from({ length: 15 }, (_, i) => String.fromCharCode(65 + i));
+    
+    data.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        if (colIndex < columns.length && rowIndex < 30) {
+          const cellId = `${columns[colIndex]}${rowIndex + 1}`;
+          newData[cellId] = cell;
+        }
+      });
+    });
+    
+    setSpreadsheetData(newData);
+    setCells(prev => {
+      const newCells = { ...prev };
+      Object.entries(newData).forEach(([cellId, value]) => {
+        newCells[cellId] = { id: cellId, value, type: 'text' };
+      });
+      return newCells;
+    });
+  };
+
+  const handleVoiceInput = (text: string) => {
+    setChatMessage(text);
   };
 
   return (
@@ -425,6 +460,10 @@ export default function SpreadsheetEditor() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
               </div>
+              {/* Import Data Button */}
+              <div className="mt-3">
+                <FileUpload onFileUpload={handleFileUpload} />
+              </div>
             </div>
 
             {/* AI Assistant Cards */}
@@ -478,17 +517,19 @@ export default function SpreadsheetEditor() {
               </div>
             </div>
 
-            {/* Chat Input */}
-            <div className="mt-auto p-4 border-t border-border">
+            {/* Ask Me Question Section - Sticky */}
+            <div className="sticky bottom-0 z-20 bg-card border-t border-border p-4">
               <div className="space-y-3">
+                <div className="text-sm font-medium">Ask Me Question</div>
                 <div className="relative">
                   <Input 
                     placeholder="Ask a question..."
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
-                    className="pr-20"
+                    className="pr-24"
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <VoiceInput onVoiceInput={handleVoiceInput} />
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                       <Paperclip className="h-3 w-3" />
                     </Button>
@@ -516,59 +557,12 @@ export default function SpreadsheetEditor() {
         <div className="flex-1 flex flex-col">
           {/* Spreadsheet Grid */}
           <div className="flex-1 overflow-auto">
-            <div className="relative">
-              {/* Column Headers */}
-              <div className="sticky top-0 z-10 flex bg-muted border-b border-border">
-                <div className="w-12 h-8 border-r border-border bg-muted"></div>
-                {columns.map((col) => (
-                  <div 
-                    key={col}
-                    className="w-24 h-8 border-r border-border flex items-center justify-center text-sm font-medium"
-                  >
-                    {col}
-                  </div>
-                ))}
-              </div>
-
-              {/* Rows */}
-              {rows.map((row) => (
-                <div key={row} className="flex border-b border-border">
-                  {/* Row Header */}
-                  <div className="w-12 h-8 border-r border-border bg-muted flex items-center justify-center text-sm font-medium">
-                    {row}
-                  </div>
-                  
-                  {/* Cells */}
-                  {columns.map((col) => {
-                    const cellId = getCellId(col, row);
-                    const isSelected = selectedCell === cellId;
-                    
-                    return (
-                      <div
-                        key={cellId}
-                        className={`w-24 h-8 border-r border-border relative cursor-cell ${
-                          isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-muted/50'
-                        }`}
-                        onClick={() => setSelectedCell(cellId)}
-                        onDoubleClick={() => setShowCellTypeModal(true)}
-                      >
-                        <input
-                          className="w-full h-full px-2 text-sm bg-transparent border-none outline-none"
-                          value={getCellValue(cellId)}
-                          onChange={(e) => updateCell(cellId, e.target.value)}
-                          onFocus={() => setSelectedCell(cellId)}
-                        />
-                        {isSelected && getCellValue(cellId) === "" && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-xs text-muted-foreground">Press / to code</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+            <SpreadsheetGrid
+              data={spreadsheetData}
+              onCellChange={updateCell}
+              selectedCell={selectedCell}
+              onCellSelect={setSelectedCell}
+            />
           </div>
 
           {/* Sheet Tabs */}

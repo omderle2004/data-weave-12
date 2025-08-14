@@ -1,10 +1,10 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import Dashboard from "./Dashboard";
+import SpreadsheetEditor from "./SpreadsheetEditor";
 
 const Index = () => {
   return (
     <MainLayout>
-      <Dashboard />
+      <SpreadsheetEditor />
     </MainLayout>
   );
 };

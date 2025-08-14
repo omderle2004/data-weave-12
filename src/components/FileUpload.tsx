@@ -1,6 +1,8 @@
 import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 interface FileUploadProps {
   onFileUpload?: (data: any[][]) => void;
@@ -14,52 +16,62 @@ export function FileUpload({ onFileUpload, accept = ".csv,.xlsx,.xls" }: FileUpl
     fileInputRef.current?.click();
   };
 
-  const parseCSV = (text: string): string[][] => {
-    const lines = text.split('\n');
-    return lines.map(line => {
-      const result = [];
-      let current = '';
-      let inQuotes = false;
-      
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          result.push(current.trim());
-          current = '';
-        } else {
-          current += char;
+  const parseExcel = (file: File): Promise<string[][]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          resolve(jsonData as string[][]);
+        } catch (error) {
+          reject(error);
         }
-      }
-      
-      result.push(current.trim());
-      return result;
-    }).filter(row => row.some(cell => cell.length > 0));
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const parseCSV = (file: File): Promise<string[][]> => {
+    return new Promise((resolve, reject) => {
+      Papa.parse(file, {
+        complete: (results) => {
+          const data = results.data as string[][];
+          const filteredData = data.filter(row => row.some(cell => cell && cell.trim().length > 0));
+          resolve(filteredData);
+        },
+        error: reject,
+        skipEmptyLines: true
+      });
+    });
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const data = parseCSV(text);
-        onFileUpload?.(data);
-      } catch (error) {
-        console.error('Error parsing file:', error);
-        alert('Error parsing file. Please ensure it\'s a valid CSV file.');
+    try {
+      let data: string[][];
+      
+      if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+        data = await parseCSV(file);
+      } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || 
+                 file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                 file.type === 'application/vnd.ms-excel') {
+        data = await parseExcel(file);
+      } else {
+        alert('Please upload a CSV or Excel file (.csv, .xlsx, .xls).');
+        return;
       }
-    };
 
-    if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-      reader.readAsText(file);
-    } else {
-      alert('Please upload a CSV file. Excel files (.xlsx, .xls) parsing requires additional libraries.');
+      onFileUpload?.(data);
+    } catch (error) {
+      console.error('Error parsing file:', error);
+      alert('Error parsing file. Please ensure it\'s a valid CSV or Excel file.');
     }
 
     // Reset the input

@@ -4,8 +4,10 @@ import { FileGrid } from "@/components/dashboard/FileGrid";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Upload, Database, Users, TrendingUp, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -17,11 +19,14 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="workspace">
+          <Button 
+            variant="workspace"
+            onClick={() => navigate("/editor")}
+          >
             <Upload className="mr-2 h-4 w-4" />
             Import File
           </Button>
-          <Button>
+          <Button onClick={() => navigate("/editor")}>
             <Plus className="mr-2 h-4 w-4" />
             Create New
           </Button>

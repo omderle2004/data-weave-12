@@ -2,6 +2,7 @@ import { CheckCircle, Circle, Plus, Database, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useNavigate } from "react-router-dom";
 
 interface ChecklistItem {
   id: string;
@@ -40,6 +41,7 @@ const checklistItems: ChecklistItem[] = [
 ];
 
 export function GettingStarted() {
+  const navigate = useNavigate();
   const completedItems = checklistItems.filter(item => item.completed).length;
   const progress = (completedItems / checklistItems.length) * 100;
 
@@ -93,7 +95,7 @@ export function GettingStarted() {
                 disabled={item.completed}
                 onClick={() => {
                   if (item.id === "create-file") {
-                    window.location.href = '/editor';
+                    navigate('/editor');
                   }
                 }}
               >

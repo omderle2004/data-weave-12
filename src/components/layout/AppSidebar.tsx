@@ -102,12 +102,6 @@ export function AppSidebar() {
             </div>
           )}
         </div>
-        {!collapsed && (
-          <Button size="sm" className="w-full mt-3">
-            <Plus className="mr-2 h-4 w-4" />
-            New File
-          </Button>
-        )}
       </SidebarHeader>
 
       <SidebarContent className="p-2">

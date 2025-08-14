@@ -1,251 +1,803 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { 
-  MessageSquare, 
-  Send, 
-  Download, 
-  Upload, 
-  Plus,
-  Database,
-  Server,
-  HardDrive,
-  Cloud,
-  Layers,
-  FileSpreadsheet,
-  Globe
+  File, Edit3, Eye, Plus, Type, HelpCircle, MessageSquare,
+  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
+  Merge, DollarSign, Percent, Hash, Calendar, Grid3x3,
+  Share, Users, User, ZoomIn, Wifi, ChevronDown, Search,
+  Sparkles, BarChart3, Code2, Settings, Send, Paperclip,
+  Image, ChevronLeft, ChevronRight, X, Undo, Redo, Scissors,
+  Copy, FileText, Calculator, PieChart, Table, CheckSquare,
+  Palette, ArrowUpDown, Trash2, ExternalLink, BookOpen,
+  Github, Twitter, Mail, Database, Upload, FileUp, Link, Code
 } from "lucide-react";
-import { SpreadsheetGrid } from "@/components/SpreadsheetGrid";
-import { FileUpload } from "@/components/FileUpload";
-import { VoiceInput } from "@/components/VoiceInput";
-import { MainLayout } from "@/components/layout/MainLayout";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+
+interface Cell {
+  id: string;
+  value: string;
+  type: 'text' | 'number' | 'formula' | 'code';
+  language?: 'python' | 'javascript' | 'formula';
+}
 
 export default function SpreadsheetEditor() {
-  const [spreadsheetData, setSpreadsheetData] = useState<Record<string, string>>({});
   const [selectedCell, setSelectedCell] = useState<string>("A1");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showCellTypeModal, setShowCellTypeModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
+  const [cells, setCells] = useState<Record<string, Cell>>({});
 
-  const handleFileUpload = (data: string[][]) => {
-    const newData: Record<string, string> = {};
-    const columns = Array.from({ length: 15 }, (_, i) => String.fromCharCode(65 + i));
-    
-    data.forEach((row, rowIndex) => {
-      row.forEach((cell, colIndex) => {
-        if (colIndex < columns.length && rowIndex < 30) {
-          const cellId = `${columns[colIndex]}${rowIndex + 1}`;
-          newData[cellId] = cell;
-        }
-      });
-    });
-    
-    setSpreadsheetData(newData);
+  // Check URL params to auto-open import modal
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'import') {
+      setShowImportModal(true);
+    }
+  }, []);
+
+  // Generate grid data
+  const columns = Array.from({ length: 15 }, (_, i) => String.fromCharCode(65 + i));
+  const rows = Array.from({ length: 30 }, (_, i) => i + 1);
+
+  const getCellId = (col: string, row: number) => `${col}${row}`;
+  
+  const getCellValue = (cellId: string) => {
+    return cells[cellId]?.value || "";
   };
 
-  const handleCellChange = (cellId: string, value: string) => {
-    setSpreadsheetData(prev => ({
+  const updateCell = (cellId: string, value: string) => {
+    setCells(prev => ({
       ...prev,
-      [cellId]: value
+      [cellId]: { id: cellId, value, type: 'text' }
     }));
   };
 
-  const handleVoiceInput = (text: string) => {
-    setChatMessage(text);
-  };
-
   return (
-    <MainLayout>
-      <ResizablePanelGroup direction="vertical" className="h-[calc(100vh-8rem)]">
-        <ResizablePanel defaultSize={70} minSize={50}>
-          <div className="h-full flex flex-col">
-            {/* Header */}
-            <div className="border-b bg-card p-4">
+    <div className="h-screen flex flex-col bg-background">
+      {/* Top Navigation */}
+      <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between">
+        {/* Left Section - Menus */}
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 mr-4">
+            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded"></div>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                File
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <FileText className="h-4 w-4 mr-2" />
+                New
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Upload className="h-4 w-4 mr-2" />
+                Open
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <FileUp className="h-4 w-4 mr-2" />
+                Save
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Database className="h-4 w-4 mr-2" />
+                Import
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Share className="h-4 w-4 mr-2" />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Edit
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <Undo className="h-4 w-4 mr-2" />
+                Undo
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Redo className="h-4 w-4 mr-2" />
+                Redo
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Scissors className="h-4 w-4 mr-2" />
+                Cut
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <FileText className="h-4 w-4 mr-2" />
+                Paste
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Search className="h-4 w-4 mr-2" />
+                Find & Replace
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                View
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuCheckboxItem checked>
+                Show row numbers
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked>
+                Show column headers
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked>
+                Show grid lines
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <ZoomIn className="h-4 w-4 mr-2" />
+                Zoom
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Eye className="h-4 w-4 mr-2" />
+                Presentation mode
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Insert
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <Code2 className="h-4 w-4 mr-2" />
+                Code cell
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Chart
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Table className="h-4 w-4 mr-2" />
+                Table
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Checkbox
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Plus className="h-4 w-4 mr-2" />
+                New sheet
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Format
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Hash className="h-4 w-4 mr-2" />
+                  Number
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem>Automatic</DropdownMenuItem>
+                  <DropdownMenuItem>Number</DropdownMenuItem>
+                  <DropdownMenuItem>Percent</DropdownMenuItem>
+                  <DropdownMenuItem>Currency</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Date
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem>Date</DropdownMenuItem>
+                  <DropdownMenuItem>Time</DropdownMenuItem>
+                  <DropdownMenuItem>Date time</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Bold className="h-4 w-4 mr-2" />
+                Bold
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Italic className="h-4 w-4 mr-2" />
+                Italic
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Palette className="h-4 w-4 mr-2" />
+                Text color
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear formatting
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Help
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Documentation
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Calculator className="h-4 w-4 mr-2" />
+                Quadratic 101
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Forum
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Github className="h-4 w-4 mr-2" />
+                GitHub
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                External resources
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+                Feedback
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background border border-border">
+              <DropdownMenuItem>
+                <Mail className="h-4 w-4 mr-2" />
+                Contact us
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Twitter className="h-4 w-4 mr-2" />
+                Twitter/X
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Community
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Middle Section - Cell Reference & Formatting */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Input 
+              value={selectedCell} 
+              className="w-20 h-8 text-center text-sm"
+              readOnly
+            />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Hash className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Type className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <DollarSign className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Percent className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Calendar className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <Separator orientation="vertical" className="h-6" />
+          
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Bold className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Italic className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Underline className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <Separator orientation="vertical" className="h-6" />
+          
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <AlignLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <AlignCenter className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <AlignRight className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Merge className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Grid3x3 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Right Section - Document Controls */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">My Team</span>
+            <span className="text-sm text-muted-foreground">/</span>
+            <Input 
+              defaultValue="Untitled" 
+              className="w-32 h-8 text-sm border-none bg-transparent"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button size="sm" className="h-8">
+              <Share className="h-4 w-4 mr-1" />
+              Share
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Users className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <User className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>100%</span>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>Connected</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 flex">
+        {/* Left Sidebar */}
+        {sidebarOpen && (
+          <div className="w-80 border-r border-border bg-card flex flex-col">
+            {/* Sidebar Header */}
+            <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Sheet Editor</h1>
-                <div className="flex items-center gap-2">
-                  <FileUpload onFileUpload={handleFileUpload} />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8">
-                        <Upload className="h-4 w-4 mr-1" />
-                        Import
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl">
-                      <DialogHeader>
-                        <DialogTitle>Import Data</DialogTitle>
-                      </DialogHeader>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                        {/* File Upload Section */}
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <FileSpreadsheet className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">Upload File</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Upload CSV or Excel files</p>
-                          <FileUpload onFileUpload={handleFileUpload} />
-                        </Card>
+                <h3 className="font-semibold">Sheet chat</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
-                        {/* Database Connections */}
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Database className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">MySQL</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to MySQL database</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
+            {/* AI Assistant Cards */}
+            <div className="p-4 space-y-3">
+              <div className="text-sm font-medium mb-3">What can I help with?</div>
+              
+              <div className="space-y-2">
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Grid3x3 className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Give me sample data</div>
+                    <div className="text-xs text-muted-foreground">Sample data is a great way to get started with Quadratic.</div>
+                  </div>
+                </div>
 
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Database className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">PostgreSQL</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to PostgreSQL database</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Build a chart</div>
+                    <div className="text-xs text-muted-foreground">Visualize your data with a chart.</div>
+                  </div>
+                </div>
 
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Server className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">MS SQL Server</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to SQL Server</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
-
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Cloud className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">Snowflake</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to Snowflake</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
-
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Database className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">CockroachDB</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to CockroachDB</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
-
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Cloud className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">BigQuery</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to Google BigQuery</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
-
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Database className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">MariaDB</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to MariaDB</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
-
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Layers className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">Supabase</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to Supabase</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
-
-                        <Card className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Database className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">Neon</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">Connect to Neon database</p>
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Connect
-                          </Button>
-                        </Card>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Button variant="outline" size="sm" className="h-8">
-                    <Download className="h-4 w-4 mr-1" />
-                    Export
-                  </Button>
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Code2 className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Generate code</div>
+                    <div className="text-xs text-muted-foreground">Use code to manipulate data, query APIs, and more.</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Spreadsheet Area */}
-            <div className="flex-1 overflow-hidden">
-              <SpreadsheetGrid 
-                data={spreadsheetData}
-                onCellChange={handleCellChange}
-                selectedCell={selectedCell}
-                onCellSelect={setSelectedCell}
-              />
-            </div>
-          </div>
-        </ResizablePanel>
-        
-        <ResizableHandle />
-        
-        {/* Ask Question Section - Sticky and Resizable */}
-        <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-          <div className="bg-card border-t p-6 h-full sticky bottom-0 z-10">
-            <div className="flex items-center gap-2 mb-4">
-              <MessageSquare className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-lg">Ask Me Question</h3>
-            </div>
-            <div className="flex gap-3 h-[calc(100%-3rem)]">
-              <Textarea 
-                placeholder="Type your question here..." 
-                className="flex-1 min-h-[120px] resize-none"
-                rows={5}
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-              />
-              <div className="flex flex-col gap-3">
-                <VoiceInput onVoiceInput={handleVoiceInput} />
-                <Button size="sm" className="h-10 px-4">
-                  <Send className="h-4 w-4" />
+            {/* Sheet Navigation */}
+            <div className="p-4 border-t border-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium">Sheet 1</span>
+                <Badge variant="secondary" className="text-xs">Sheet</Badge>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-auto">
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
+
+            {/* Chat Input */}
+            <div className="mt-auto p-4 border-t border-border">
+              <div className="space-y-3">
+                <div className="relative">
+                  <Input 
+                    placeholder="Ask a question..."
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    className="pr-20"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Image className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" className="h-6 w-6 p-0">
+                      <Send className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Model: Basic</span>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs">
+                    Learn more
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </MainLayout>
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Spreadsheet Grid */}
+          <div className="flex-1 overflow-auto">
+            <div className="relative">
+              {/* Column Headers */}
+              <div className="sticky top-0 z-10 flex bg-muted border-b border-border">
+                <div className="w-12 h-8 border-r border-border bg-muted"></div>
+                {columns.map((col) => (
+                  <div 
+                    key={col}
+                    className="w-24 h-8 border-r border-border flex items-center justify-center text-sm font-medium"
+                  >
+                    {col}
+                  </div>
+                ))}
+              </div>
+
+              {/* Rows */}
+              {rows.map((row) => (
+                <div key={row} className="flex border-b border-border">
+                  {/* Row Header */}
+                  <div className="w-12 h-8 border-r border-border bg-muted flex items-center justify-center text-sm font-medium">
+                    {row}
+                  </div>
+                  
+                  {/* Cells */}
+                  {columns.map((col) => {
+                    const cellId = getCellId(col, row);
+                    const isSelected = selectedCell === cellId;
+                    
+                    return (
+                      <div
+                        key={cellId}
+                        className={`w-24 h-8 border-r border-border relative cursor-cell ${
+                          isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-muted/50'
+                        }`}
+                        onClick={() => setSelectedCell(cellId)}
+                        onDoubleClick={() => setShowCellTypeModal(true)}
+                      >
+                        <input
+                          className="w-full h-full px-2 text-sm bg-transparent border-none outline-none"
+                          value={getCellValue(cellId)}
+                          onChange={(e) => updateCell(cellId, e.target.value)}
+                          onFocus={() => setSelectedCell(cellId)}
+                        />
+                        {isSelected && getCellValue(cellId) === "" && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="text-xs text-muted-foreground">Press / to code</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sheet Tabs */}
+          <div className="h-12 border-t border-border bg-card flex items-center px-4 justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-8">
+                <Plus className="h-4 w-4 mr-1" />
+                Sheet 1
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 text-blue-600">
+                Sheet 1
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowImportModal(true)}
+              >
+                Import data
+              </Button>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Connected</span>
+                <span>0.15.2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel for Import Data */}
+        {showImportModal && (
+          <div className="w-80 border-l border-border bg-card p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-semibold">Import data</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0"
+                onClick={() => setShowImportModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Upload Section */}
+              <div>
+                <h4 className="text-sm font-medium mb-3">Data from...</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Local file</div>
+                      <div className="text-xs text-muted-foreground">csv, xlsx, pqt, grid</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Code className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">API</div>
+                      <div className="text-xs text-muted-foreground">Fetch data over HTTP with code</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Examples</div>
+                      <div className="text-xs text-muted-foreground">Files from the Quadratic team</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Database Connections */}
+              <div>
+                <h4 className="text-sm font-medium mb-3">Connect and pull data form your own external data source:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">MySQL</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Postgres</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-red-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">MS SQL Server</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-cyan-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Snowflake</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">CockroachDB</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-blue-400 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">BigQuery</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">MariaDB</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Supabase</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-6 h-6 bg-indigo-500 rounded flex items-center justify-center">
+                      <Database className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Neon</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data from connections */}
+              <div>
+                <h4 className="text-sm font-medium mb-3">Data from connections</h4>
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Database className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="font-medium">[Demo] Quadratic public data</div>
+                    <div className="text-xs text-muted-foreground">Postgres</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Cell Type Modal */}
+      <Dialog open={showCellTypeModal} onOpenChange={setShowCellTypeModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose a cell type...</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium mb-3">Languages</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="text-sm font-mono">🐍</span>
+                  </div>
+                  <span className="font-medium">Python</span>
+                </div>
+                
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <span className="text-sm">fx</span>
+                  </div>
+                  <span className="font-medium">Formula</span>
+                </div>
+                
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <span className="text-sm font-mono">JS</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">JavaScript</span>
+                    <Badge variant="secondary" className="text-xs">Experimental</Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-sm font-medium mb-3">Connections</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xs">🔗</span>
+                  </div>
+                  <span className="font-medium">[Demo] Quadratic public data</span>
+                </div>
+                
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Settings className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Add or manage...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

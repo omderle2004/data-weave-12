@@ -154,7 +154,7 @@ export default function SpreadsheetEditor() {
               variant="ghost"
               size="sm"
               className="h-6 lg:h-8 px-1 lg:px-2 mr-1 lg:mr-2"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/")}
             >
               <ChevronLeft className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
               <span className="text-xs lg:text-sm">Back</span>

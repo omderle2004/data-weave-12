@@ -9,9 +9,10 @@ interface FileImportProps {
   onDataImport: (data: string[][]) => void;
   onClose: () => void;
   isOpen: boolean;
+  uploadComplete?: boolean;
 }
 
-export function FileImport({ onDataImport, onClose, isOpen }: FileImportProps) {
+export function FileImport({ onDataImport, onClose, isOpen, uploadComplete }: FileImportProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;

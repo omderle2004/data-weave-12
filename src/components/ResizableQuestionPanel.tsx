@@ -60,47 +60,49 @@ export function ResizableQuestionPanel({
   };
 
   return (
-    <PanelGroup direction="vertical" className="h-full">
-      <Panel defaultSize={60} minSize={40}>
-        {children}
+    <PanelGroup direction="vertical" className="h-full w-full">
+      <Panel defaultSize={65} minSize={45}>
+        <div className="h-full w-full overflow-hidden">
+          {children}
+        </div>
       </Panel>
       
-      <PanelResizeHandle className="h-2 bg-border hover:bg-primary/20 transition-colors cursor-row-resize flex items-center justify-center">
+      <PanelResizeHandle className="h-2 bg-border hover:bg-primary/20 transition-colors cursor-row-resize flex items-center justify-center shrink-0">
         <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
       </PanelResizeHandle>
       
-      <Panel defaultSize={40} minSize={20} maxSize={60}>
+      <Panel defaultSize={35} minSize={25} maxSize={55}>
         <PanelGroup direction="horizontal" className="h-full">
-          <Panel defaultSize={50} minSize={30}>
+          <Panel defaultSize={50} minSize={35}>
             <div className="h-full bg-card border-t border-border flex flex-col">
               {/* Header */}
-              <div className="p-4 border-b border-border">
+              <div className="p-3 lg:p-4 border-b border-border shrink-0">
                 <h3 className="font-semibold text-sm">Ask Me a Question</h3>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
                   Get help with your spreadsheet, analyze data, or ask questions about your content
                 </p>
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 p-4 flex flex-col">
-                <div className="flex-1 mb-4">
+              <div className="flex-1 p-3 lg:p-4 flex flex-col min-h-0">
+                <div className="flex-1 mb-3 lg:mb-4 min-h-0">
                   <Textarea
                     placeholder="What would you like to know about your data? You can type here or use the voice button to speak your question..."
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="min-h-[80px] resize-none"
+                    className="min-h-[60px] lg:min-h-[80px] resize-none text-sm h-full"
                   />
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Paperclip className="h-4 w-4" />
+                <div className="flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-1 lg:gap-2">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 lg:h-8 lg:w-8 p-0">
+                      <Paperclip className="h-3 w-3 lg:h-4 lg:w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Image className="h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="h-7 w-7 lg:h-8 lg:w-8 p-0">
+                      <Image className="h-3 w-3 lg:h-4 lg:w-4" />
                     </Button>
                     <VoiceInput onTranscription={handleVoiceTranscription} />
                   </div>
@@ -109,18 +111,18 @@ export function ResizableQuestionPanel({
                     size="sm" 
                     onClick={handleSendMessage}
                     disabled={!chatMessage.trim() || isAiLoading}
-                    className="h-8"
+                    className="h-7 lg:h-8 text-xs lg:text-sm"
                   >
-                    <Send className="h-4 w-4 mr-2" />
+                    <Send className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
                     {isAiLoading ? 'Sending...' : 'Send'}
                   </Button>
                 </div>
 
                 {/* Status */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-                  <span>Model: GPT-4</span>
+                <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-border shrink-0">
+                  <span className="hidden sm:inline">Model: GPT-4</span>
                   <span className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
                     Ready
                   </span>
                 </div>
@@ -129,10 +131,10 @@ export function ResizableQuestionPanel({
           </Panel>
           
           <PanelResizeHandle className="w-2 bg-border hover:bg-primary/20 transition-colors cursor-col-resize flex items-center justify-center">
-            <div className="w-1 h-12 bg-muted-foreground/30 rounded-full"></div>
+            <div className="w-1 h-8 lg:h-12 bg-muted-foreground/30 rounded-full"></div>
           </PanelResizeHandle>
           
-          <Panel defaultSize={50} minSize={30}>
+          <Panel defaultSize={50} minSize={35}>
             <AIResponsePanel responses={aiResponses} isLoading={isAiLoading} />
           </Panel>
         </PanelGroup>

@@ -52,6 +52,7 @@ export default function SpreadsheetEditor() {
   const [cells, setCells] = useState<Record<string, Cell>>({});
   const [importedData, setImportedData] = useState<string[][] | null>(null);
   const [showSidebarToggle, setShowSidebarToggle] = useState(false);
+  const [uploadComplete, setUploadComplete] = useState(false);
 
   // Check URL params to auto-open import modal
   useEffect(() => {
@@ -96,6 +97,13 @@ export default function SpreadsheetEditor() {
     });
     
     setCells(newCells);
+    setUploadComplete(true);
+    
+    // Auto-close after showing completion
+    setTimeout(() => {
+      setShowImportModal(false);
+      setUploadComplete(false);
+    }, 1500);
   };
 
   const handleSendMessage = () => {
@@ -111,7 +119,7 @@ export default function SpreadsheetEditor() {
   }, [sidebarOpen]);
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-background overflow-hidden w-full">
       {/* Sidebar Toggle Button (when sidebar is closed) */}
       {showSidebarToggle && (
         <Button
@@ -125,27 +133,27 @@ export default function SpreadsheetEditor() {
       )}
 
       {/* Top Navigation */}
-      <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between shrink-0">
+      <header className="h-12 lg:h-16 border-b border-border bg-card px-2 lg:px-4 flex items-center justify-between shrink-0 overflow-x-auto">
         {/* Import Data Button */}
-        <div className="absolute top-20 left-4 z-20">
+        <div className="absolute top-14 lg:top-20 left-2 lg:left-4 z-20">
           <Button 
             onClick={() => setShowImportModal(true)}
-            className="h-9 px-4"
+            className="h-8 lg:h-9 px-3 lg:px-4 text-xs lg:text-sm"
             variant="outline"
           >
-            <Upload className="h-4 w-4 mr-2" />
+            <Upload className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
             Import Data
           </Button>
         </div>
         {/* Left Section - Menus */}
-        <div className="flex items-center gap-1">
-          <div className="flex items-center gap-1 mr-4">
-            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded"></div>
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-1 mr-2 lg:mr-4">
+            <div className="w-5 h-5 lg:w-6 lg:h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded shrink-0"></div>
           </div>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
+              <Button variant="ghost" size="sm" className="h-6 lg:h-8 px-2 lg:px-3 text-xs lg:text-sm">
                 File
               </Button>
             </DropdownMenuTrigger>
@@ -374,94 +382,94 @@ export default function SpreadsheetEditor() {
           </DropdownMenu>
         </div>
 
-        {/* Middle Section - Cell Reference & Formatting */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        {/* Middle Section - Cell Reference & Formatting (Hidden on small screens) */}
+        <div className="hidden lg:flex items-center gap-2 xl:gap-3 min-w-0">
+          <div className="flex items-center gap-1 xl:gap-2">
             <Input 
               value={selectedCell} 
-              className="w-20 h-8 text-center text-sm"
+              className="w-16 xl:w-20 h-6 xl:h-8 text-center text-xs xl:text-sm"
               readOnly
             />
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Hash className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <Hash className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Type className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <Type className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <DollarSign className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <DollarSign className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Percent className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0 hidden xl:flex">
+              <Percent className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Calendar className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <Separator orientation="vertical" className="h-6" />
-          
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Bold className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Italic className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Underline className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0 hidden xl:flex">
+              <Calendar className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
           </div>
           
-          <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-4 xl:h-6" />
           
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <AlignLeft className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <Bold className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <AlignCenter className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <Italic className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <AlignRight className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0 hidden xl:flex">
+              <Underline className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Merge className="h-4 w-4" />
+          </div>
+          
+          <Separator orientation="vertical" className="h-4 xl:h-6 hidden xl:block" />
+          
+          <div className="hidden xl:flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <AlignLeft className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Grid3x3 className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <AlignCenter className="h-3 w-3 xl:h-4 xl:w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <AlignRight className="h-3 w-3 xl:h-4 xl:w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <Merge className="h-3 w-3 xl:h-4 xl:w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
+              <Grid3x3 className="h-3 w-3 xl:h-4 xl:w-4" />
             </Button>
           </div>
         </div>
 
         {/* Right Section - Document Controls */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">My Team</span>
-            <span className="text-sm text-muted-foreground">/</span>
+        <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+          <div className="hidden lg:flex items-center gap-2">
+            <span className="text-xs lg:text-sm text-muted-foreground">My Team</span>
+            <span className="text-xs lg:text-sm text-muted-foreground">/</span>
             <Input 
               defaultValue="Untitled" 
-              className="w-32 h-8 text-sm border-none bg-transparent"
+              className="w-24 lg:w-32 h-6 lg:h-8 text-xs lg:text-sm border-none bg-transparent"
             />
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button size="sm" className="h-8">
-              <Share className="h-4 w-4 mr-1" />
-              Share
+          <div className="flex items-center gap-1 lg:gap-2">
+            <Button size="sm" className="h-6 lg:h-8 text-xs lg:text-sm px-2 lg:px-3">
+              <Share className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+              <span className="hidden sm:inline">Share</span>
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Users className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 lg:h-8 lg:w-8 p-0">
+              <Users className="h-3 w-3 lg:h-4 lg:w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <User className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 lg:h-8 lg:w-8 p-0">
+              <User className="h-3 w-3 lg:h-4 lg:w-4" />
             </Button>
           </div>
           
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="hidden md:flex items-center gap-2 text-xs lg:text-sm text-muted-foreground">
             <span>100%</span>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-success rounded-full"></div>
               <span>Connected</span>
             </div>
           </div>
@@ -471,7 +479,7 @@ export default function SpreadsheetEditor() {
       <div className="flex-1 flex min-h-0">
         {/* Left Sidebar */}
         {sidebarOpen && (
-          <div className="w-80 max-w-[30vw] min-w-[280px] border-r border-border bg-card flex flex-col shrink-0">
+          <div className="w-72 lg:w-80 max-w-[30vw] min-w-[250px] lg:min-w-[280px] border-r border-border bg-card flex flex-col shrink-0">
             {/* Sidebar Header */}
             <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between">
@@ -661,11 +669,18 @@ export default function SpreadsheetEditor() {
         </div>
 
         {/* File Import Panel */}
-        <FileImport
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          onDataImport={handleDataImport}
-        />
+        {showImportModal && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-card border border-border rounded-lg shadow-lg max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <FileImport
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                onDataImport={handleDataImport}
+                uploadComplete={uploadComplete}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Cell Type Modal */}

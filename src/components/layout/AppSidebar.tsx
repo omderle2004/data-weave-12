@@ -97,8 +97,8 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h1 className="font-semibold text-sidebar-foreground">DataSpace</h1>
-              <p className="text-xs text-muted-foreground">AI Workspace</p>
+              <h1 className="font-semibold text-sidebar-foreground">SmartBiz AI</h1>
+              <p className="text-xs text-muted-foreground">Business Intelligence</p>
             </div>
           )}
         </div>
@@ -179,17 +179,11 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-muted rounded-full flex items-center justify-center">
-            <User className="h-4 w-4" />
+        {!collapsed && (
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">SmartBiz AI v1.0</p>
           </div>
-          {!collapsed && (
-            <div className="flex-1">
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-muted-foreground">john@company.com</p>
-            </div>
-          )}
-        </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

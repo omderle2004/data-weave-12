@@ -10,7 +10,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Welcome Section */}
       <div className="flex items-center justify-between">
         <div>

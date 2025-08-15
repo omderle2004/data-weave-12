@@ -46,7 +46,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div className="min-h-screen flex w-full bg-background overflow-hidden">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 ml-4">
           {/* Top Header */}
           <header className="h-16 border-b border-workspace-border bg-workspace-nav px-4 lg:px-6 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 lg:gap-4 min-w-0 flex-1">
@@ -101,7 +101,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-hidden p-6">
             {children}
           </main>
         </div>

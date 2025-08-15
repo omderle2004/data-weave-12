@@ -22,7 +22,7 @@ export default function Landing() {
           <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Database className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-white">DataSpace</span>
+          <span className="text-xl font-bold text-white">SmartBiz AI</span>
         </div>
         
         <div className="flex items-center gap-4">

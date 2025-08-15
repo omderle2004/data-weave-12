@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -121,7 +122,8 @@ export default function SpreadsheetEditor() {
   }, [sidebarOpen]);
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden w-full">
+    <ProtectedRoute>
+      <div className="h-screen flex flex-col bg-background overflow-hidden w-full">
       {/* Sidebar Toggle Button (when sidebar is closed) */}
       {showSidebarToggle && (
         <Button
@@ -722,5 +724,6 @@ export default function SpreadsheetEditor() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProtectedRoute>
   );
 }

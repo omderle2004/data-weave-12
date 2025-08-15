@@ -1,19 +1,22 @@
-import { MainLayout } from "@/components/layout/MainLayout";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { FileGrid } from "@/components/dashboard/FileGrid";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Upload, Database, Users, TrendingUp, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { profile } = useProfile();
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Welcome back, John</h1>
+          <h1 className="text-2xl font-bold">
+            Welcome back, {profile?.display_name || 'User'}
+          </h1>
           <p className="text-muted-foreground">
             Let's build something amazing with your data
           </p>

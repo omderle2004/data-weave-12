@@ -11,18 +11,22 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, Check } from "lucide-react";
-
-const members = [
-  {
-    id: 1,
-    name: "Om Derle (You)",
-    email: "omderle810@gmail.com",
-    role: "Owner",
-    avatar: "/lovable-uploads/avatar-placeholder.png"
-  }
-];
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function Members() {
+  const { user } = useAuth();
+  const { profile } = useProfile();
+
+  // Create dynamic member data based on current user
+  const currentMember = {
+    id: 1,
+    name: `${profile?.display_name || user?.email?.split('@')[0] || 'User'} (You)`,
+    email: user?.email || '',
+    role: "Owner",
+    avatar: profile?.avatar_url || "/lovable-uploads/avatar-placeholder.png"
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -62,36 +66,34 @@ export default function Members() {
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-4">
-              {members.map((member) => (
-                <div key={member.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={member.avatar} />
-                      <AvatarFallback>
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{member.name}</p>
-                      <p className="text-sm text-muted-foreground">{member.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary">{member.role}</Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem>Change role</DropdownMenuItem>
-                        <DropdownMenuItem>Remove from team</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={currentMember.avatar} />
+                    <AvatarFallback>
+                      {currentMember.name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{currentMember.name}</p>
+                    <p className="text-sm text-muted-foreground">{currentMember.email}</p>
                   </div>
                 </div>
-              ))}
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary">{currentMember.role}</Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem>Change role</DropdownMenuItem>
+                      <DropdownMenuItem>Remove from team</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -101,7 +103,7 @@ export default function Members() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-primary">Upgrade to Quadratic Pro</h3>
+                <h3 className="font-semibold text-primary">Upgrade to SmartBiz AI Pro</h3>
                 <p className="text-sm text-muted-foreground">
                   Get more AI messages, connections, and more.
                 </p>

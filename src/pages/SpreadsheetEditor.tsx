@@ -68,11 +68,12 @@ export default function SpreadsheetEditor() {
   // Generate dynamic grid data based on imported data or defaults
   const getDynamicGridSize = () => {
     if (importedData) {
-      const maxCols = Math.max(26, Math.max(...importedData.map(row => row.length))); // At least A-Z
-      const maxRows = Math.max(50, importedData.length + 10); // At least 50 rows, +10 buffer
+      // Show all data without any limits
+      const maxCols = Math.max(26, Math.max(...importedData.map(row => row.length)));
+      const maxRows = Math.max(50, importedData.length);
       return {
-        columns: Math.min(maxCols, 100), // Cap at 100 columns
-        rows: Math.min(maxRows, 1000) // Cap at 1000 rows
+        columns: maxCols, // No cap - show all columns
+        rows: maxRows // No cap - show all rows
       };
     }
     return { columns: 26, rows: 50 }; // Default size

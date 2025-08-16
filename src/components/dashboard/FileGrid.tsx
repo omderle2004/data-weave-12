@@ -44,33 +44,6 @@ const sampleFiles: FileItem[] = [
     shared: true,
     starred: true,
   },
-  {
-    id: "2",
-    name: "Customer Database Query",
-    type: "notebook",
-    owner: "Jane Smith",
-    lastModified: "1 day ago",
-    shared: false,
-    starred: false,
-  },
-  {
-    id: "3",
-    name: "Revenue Dashboard",
-    type: "dashboard",
-    owner: "Mike Johnson",
-    lastModified: "3 days ago",
-    shared: true,
-    starred: false,
-  },
-  {
-    id: "4",
-    name: "Inventory Tracking",
-    type: "spreadsheet",
-    owner: "Sarah Wilson",
-    lastModified: "1 week ago",
-    shared: false,
-    starred: true,
-  },
 ];
 
 type ViewMode = "grid" | "list";

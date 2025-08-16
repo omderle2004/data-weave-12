@@ -68,12 +68,12 @@ export default function SpreadsheetEditor() {
   // Generate dynamic grid data based on imported data or defaults
   const getDynamicGridSize = () => {
     if (importedData) {
-      // Show all data without any limits
-      const maxCols = Math.max(26, Math.max(...importedData.map(row => row.length)));
-      const maxRows = Math.max(50, importedData.length);
+      // Show ALL data - no limits at all
+      const maxCols = Math.max(...importedData.map(row => row.length));
+      const maxRows = importedData.length;
       return {
-        columns: maxCols, // No cap - show all columns
-        rows: maxRows // No cap - show all rows
+        columns: Math.max(26, maxCols), // At least 26 columns (A-Z), but show all if more
+        rows: Math.max(50, maxRows) // At least 50 rows, but show all if more
       };
     }
     return { columns: 26, rows: 50 }; // Default size
@@ -108,14 +108,17 @@ export default function SpreadsheetEditor() {
     
     data.forEach((row, rowIndex) => {
       row.forEach((cellValue, colIndex) => {
-        if (colIndex < columns.length && rowIndex < rows.length) {
-          const cellId = getCellId(columns[colIndex], rowIndex + 1);
-          newCells[cellId] = {
-            id: cellId,
-            value: cellValue || '',
-            type: 'text'
-          };
-        }
+        // No limits - populate all cells from imported data
+        const colLetter = colIndex < 26 
+          ? String.fromCharCode(65 + colIndex)
+          : String.fromCharCode(65 + Math.floor(colIndex / 26) - 1) + String.fromCharCode(65 + (colIndex % 26));
+        
+        const cellId = getCellId(colLetter, rowIndex + 1);
+        newCells[cellId] = {
+          id: cellId,
+          value: cellValue || '',
+          type: 'text'
+        };
       });
     });
     

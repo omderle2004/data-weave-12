@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ import {
 import { FileImport } from "@/components/FileImport";
 import { ResizableQuestionPanel } from "@/components/ResizableQuestionPanel";
 import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +49,8 @@ interface Cell {
 
 export default function SpreadsheetEditor() {
   const navigate = useNavigate();
+  const { projectId } = useParams();
+  const { user } = useAuth();
   const [selectedCell, setSelectedCell] = useState<string>("A1");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showCellTypeModal, setShowCellTypeModal] = useState(false);
@@ -56,14 +60,48 @@ export default function SpreadsheetEditor() {
   const [importedData, setImportedData] = useState<string[][] | null>(null);
   const [showSidebarToggle, setShowSidebarToggle] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(projectId || null);
+  const [projectName, setProjectName] = useState<string>("Untitled");
 
-  // Check URL params to auto-open import modal
+  // Load project data if projectId exists
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('mode') === 'import') {
-      setShowImportModal(true);
-    }
-  }, []);
+    const loadProject = async () => {
+      if (projectId && user) {
+        try {
+          const { data: project, error } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('id', projectId)
+            .eq('user_id', user.id)
+            .single();
+
+          if (error) {
+            console.error('Error loading project:', error);
+            toast.error('Failed to load project');
+            navigate('/dashboard');
+            return;
+          }
+
+          if (project && project.spreadsheet_data) {
+            setProjectName(project.name);
+            handleDataImport(project.spreadsheet_data, project.id);
+          }
+        } catch (error) {
+          console.error('Error loading project:', error);
+          toast.error('Failed to load project');
+          navigate('/dashboard');
+        }
+      } else {
+        // Check URL params to auto-open import modal for new projects
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('mode') === 'import') {
+          setShowImportModal(true);
+        }
+      }
+    };
+
+    loadProject();
+  }, [projectId, user, navigate]);
 
   // Generate dynamic grid data based on imported data or defaults
   const getDynamicGridSize = () => {
@@ -102,7 +140,7 @@ export default function SpreadsheetEditor() {
     }));
   };
 
-  const handleDataImport = (data: string[][]) => {
+  const handleDataImport = (data: string[][], newProjectId?: string) => {
     setImportedData(data);
     const newCells: Record<string, Cell> = {};
     
@@ -123,6 +161,13 @@ export default function SpreadsheetEditor() {
     });
     
     setCells(newCells);
+    
+    if (newProjectId) {
+      setCurrentProjectId(newProjectId);
+      // Navigate to the project-specific URL
+      navigate(`/spreadsheet/${newProjectId}`, { replace: true });
+    }
+    
     setUploadComplete(true);
     
     // Auto-close after showing completion
@@ -425,7 +470,8 @@ export default function SpreadsheetEditor() {
             <span className="text-xs lg:text-sm text-muted-foreground">My Team</span>
             <span className="text-xs lg:text-sm text-muted-foreground">/</span>
             <Input 
-              defaultValue="Untitled" 
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
               className="w-24 lg:w-32 h-6 lg:h-8 text-xs lg:text-sm border-none bg-transparent"
             />
           </div>

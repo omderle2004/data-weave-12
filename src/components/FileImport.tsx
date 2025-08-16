@@ -1,62 +1,97 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FileImportProps {
-  onDataImport: (data: string[][]) => void;
+  onDataImport: (data: string[][], projectId?: string) => void;
   onClose: () => void;
   isOpen: boolean;
   uploadComplete?: boolean;
 }
 
 export function FileImport({ onDataImport, onClose, isOpen, uploadComplete }: FileImportProps) {
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const [uploading, setUploading] = useState(false);
+  const { user } = useAuth();
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    if (!file) return;
+    if (!file || !user) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = e.target?.result;
-        if (!data) return;
+    setUploading(true);
+    
+    try {
+      // Parse the file data
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+      
+      // Filter out completely empty rows
+      const filteredData = jsonData.filter(row => 
+        row.some(cell => cell !== undefined && cell !== null && cell !== '')
+      );
 
-        let parsedData: string[][] = [];
+      // Create project in database
+      const projectName = file.name.replace(/\.[^/.]+$/, ""); // Remove file extension
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          user_id: user.id,
+          name: projectName,
+          filename: file.name,
+          file_path: '', // Will be updated after file upload
+          file_size: file.size,
+          spreadsheet_data: filteredData
+        })
+        .select()
+        .single();
 
-        if (file.name.endsWith('.csv')) {
-          // Parse CSV
-          const text = data as string;
-          parsedData = text.split('\n').map(row => 
-            row.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''))
-          );
-        } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          // Parse Excel
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          parsedData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        }
-
-        // Filter out empty rows
-        parsedData = parsedData.filter(row => row.some(cell => cell && cell.toString().trim()));
-
-        onDataImport(parsedData);
-        toast.success(`Successfully imported ${parsedData.length} rows from ${file.name}`);
-        onClose();
-      } catch (error) {
-        console.error('Error parsing file:', error);
-        toast.error('Failed to parse file. Please check the format.');
+      if (projectError) {
+        console.error('Error creating project:', projectError);
+        toast.error('Failed to create project');
+        return;
       }
-    };
 
-    if (file.name.endsWith('.csv')) {
-      reader.readAsText(file);
-    } else {
-      reader.readAsBinaryString(file);
+      // Upload file to Supabase Storage
+      const filePath = `${user.id}/${project.id}/${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('projects')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        // Clean up the project if file upload fails
+        await supabase.from('projects').delete().eq('id', project.id);
+        toast.error('Failed to upload file');
+        return;
+      }
+
+      // Update project with file path
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ file_path: filePath })
+        .eq('id', project.id);
+
+      if (updateError) {
+        console.error('Error updating project:', updateError);
+      }
+
+      toast.success('Project created successfully!');
+      onDataImport(filteredData, project.id);
+      
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast.error('Error processing file. Please make sure it\'s a valid CSV or Excel file.');
+    } finally {
+      setUploading(false);
     }
-  }, [onDataImport, onClose]);
+  }, [onDataImport, user]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -91,7 +126,9 @@ export function FileImport({ onDataImport, onClose, isOpen, uploadComplete }: Fi
             <input {...getInputProps()} />
             <div className="flex flex-col items-center gap-3">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                {isDragActive ? (
+                {uploading ? (
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                ) : isDragActive ? (
                   <Upload className="h-6 w-6 text-primary" />
                 ) : (
                   <FileSpreadsheet className="h-6 w-6 text-primary" />
@@ -99,7 +136,7 @@ export function FileImport({ onDataImport, onClose, isOpen, uploadComplete }: Fi
               </div>
               <div>
                 <p className="font-medium text-sm">
-                  {isDragActive ? 'Drop the file here' : 'Choose file or drag & drop'}
+                  {uploading ? 'Creating project...' : isDragActive ? 'Drop the file here' : 'Choose file or drag & drop'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Supports CSV, XLSX, XLS files

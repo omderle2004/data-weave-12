@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileSpreadsheet,
   MoreHorizontal,
@@ -11,6 +11,9 @@ import {
   Grid3X3,
   List,
 } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,19 +35,10 @@ interface FileItem {
   shared: boolean;
   starred: boolean;
   size?: string;
+  projectId?: string;
 }
 
-const sampleFiles: FileItem[] = [
-  {
-    id: "1",
-    name: "Q4 Sales Analysis",
-    type: "spreadsheet",
-    owner: "John Doe",
-    lastModified: "2 hours ago",
-    shared: true,
-    starred: true,
-  },
-];
+// Remove static sample files - will be replaced with dynamic loading
 
 type ViewMode = "grid" | "list";
 
@@ -55,6 +49,9 @@ interface FileGridProps {
 
 export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -76,6 +73,58 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
       dashboard: { label: "Dashboard", className: "bg-green-100 text-green-800" },
     };
     return badges[type as keyof typeof badges] || badges.spreadsheet;
+  };
+
+  // Load user projects
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data: projects, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false });
+
+        if (error) {
+          console.error('Error loading projects:', error);
+          toast.error('Failed to load projects');
+          return;
+        }
+
+        const fileItems: FileItem[] = projects.map(project => ({
+          id: project.id,
+          name: project.name,
+          type: "spreadsheet",
+          owner: user.email || 'You',
+          lastModified: new Date(project.updated_at).toLocaleDateString(),
+          shared: false,
+          starred: false,
+          projectId: project.id,
+        }));
+
+        setFiles(fileItems);
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        toast.error('Failed to load projects');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, [user]);
+
+  const handleFileClick = (file: FileItem) => {
+    if (file.projectId) {
+      window.location.href = `/spreadsheet/${file.projectId}`;
+    } else {
+      window.location.href = '/editor';
+    }
   };
 
   const ViewToggle = () => (
@@ -113,7 +162,7 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => window.location.href = '/editor'}>
+        <DropdownMenuItem onClick={() => handleFileClick(file)}>
           <Eye className="mr-2 h-4 w-4" />
           Open
         </DropdownMenuItem>
@@ -151,7 +200,14 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
         </div>
         
         <div className="space-y-2">
-          {sampleFiles.map((file) => {
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading projects...</div>
+          ) : files.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No projects yet. Create your first project by uploading a file!
+            </div>
+          ) : (
+            files.map((file) => {
             const Icon = getTypeIcon(file.type);
             const badge = getTypeBadge(file.type);
             
@@ -159,7 +215,7 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
               <div
                 key={file.id}
                 className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-file-hover transition-colors cursor-pointer group"
-                onClick={() => window.location.href = '/editor'}
+                onClick={() => handleFileClick(file)}
               >
                 <Icon className="h-5 w-5 text-primary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -179,7 +235,8 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
                 <FileActions file={file} />
               </div>
             );
-          })}
+            })
+          )}
         </div>
       </div>
     );
@@ -193,7 +250,14 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {sampleFiles.map((file) => {
+        {loading ? (
+          <div className="col-span-full text-center py-8 text-muted-foreground">Loading projects...</div>
+        ) : files.length === 0 ? (
+          <div className="col-span-full text-center py-8 text-muted-foreground">
+            No projects yet. Create your first project by uploading a file!
+          </div>
+        ) : (
+          files.map((file) => {
           const Icon = getTypeIcon(file.type);
           const badge = getTypeBadge(file.type);
           
@@ -201,7 +265,7 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
             <Card 
               key={file.id} 
               className="hover:bg-file-hover transition-colors cursor-pointer group"
-              onClick={() => window.location.href = '/editor'}
+              onClick={() => handleFileClick(file)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -231,7 +295,8 @@ export function FileGrid({ title, showViewToggle = true }: FileGridProps) {
               </CardContent>
             </Card>
           );
-        })}
+          })
+        )}
       </div>
     </div>
   );

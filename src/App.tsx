@@ -38,6 +38,7 @@ const App = () => (
               <Route path="/members" element={<Members />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/editor" element={<SpreadsheetEditor />} />
+              <Route path="/spreadsheet/:projectId" element={<SpreadsheetEditor />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/forum" element={<Contact />} />
               <Route path="/examples" element={<Dashboard />} />

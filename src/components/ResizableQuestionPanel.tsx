@@ -71,7 +71,7 @@ export function ResizableQuestionPanel({
         <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
       </PanelResizeHandle>
       
-      <Panel defaultSize={35} minSize={25} maxSize={55}>
+      <Panel defaultSize={35} minSize={25} maxSize={70}>
         <PanelGroup direction="horizontal" className="h-full">
           <Panel defaultSize={50} minSize={35}>
             <div className="h-full bg-card border-t border-border flex flex-col">

@@ -65,9 +65,28 @@ export default function SpreadsheetEditor() {
     }
   }, []);
 
-  // Generate grid data
-  const columns = Array.from({ length: 15 }, (_, i) => String.fromCharCode(65 + i));
-  const rows = Array.from({ length: 30 }, (_, i) => i + 1);
+  // Generate dynamic grid data based on imported data or defaults
+  const getDynamicGridSize = () => {
+    if (importedData) {
+      const maxCols = Math.max(26, Math.max(...importedData.map(row => row.length))); // At least A-Z
+      const maxRows = Math.max(50, importedData.length + 10); // At least 50 rows, +10 buffer
+      return {
+        columns: Math.min(maxCols, 100), // Cap at 100 columns
+        rows: Math.min(maxRows, 1000) // Cap at 1000 rows
+      };
+    }
+    return { columns: 26, rows: 50 }; // Default size
+  };
+
+  const { columns: colCount, rows: rowCount } = getDynamicGridSize();
+  const columns = Array.from({ length: colCount }, (_, i) => {
+    if (i < 26) return String.fromCharCode(65 + i);
+    // Handle beyond Z (AA, AB, AC, etc.)
+    const firstChar = String.fromCharCode(65 + Math.floor(i / 26) - 1);
+    const secondChar = String.fromCharCode(65 + (i % 26));
+    return firstChar + secondChar;
+  });
+  const rows = Array.from({ length: rowCount }, (_, i) => i + 1);
 
   const getCellId = (col: string, row: number) => `${col}${row}`;
   
@@ -195,262 +214,203 @@ export default function SpreadsheetEditor() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                Edit
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background border border-border">
-              <DropdownMenuItem>
-                <Undo className="h-4 w-4 mr-2" />
-                Undo
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Redo className="h-4 w-4 mr-2" />
-                Redo
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Scissors className="h-4 w-4 mr-2" />
-                Cut
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <FileText className="h-4 w-4 mr-2" />
-                Paste
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Search className="h-4 w-4 mr-2" />
-                Find & Replace
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 lg:h-8 px-2 lg:px-3 text-xs lg:text-sm">
+                  Edit
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-background border border-border z-50">
+                <DropdownMenuItem>
+                  <Undo className="h-4 w-4 mr-2" />
+                  Undo
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Redo className="h-4 w-4 mr-2" />
+                  Redo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <Scissors className="h-4 w-4 mr-2" />
+                  Cut
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Paste
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <Search className="h-4 w-4 mr-2" />
+                  Find & Replace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                View
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background border border-border">
-              <DropdownMenuCheckboxItem checked>
-                Show row numbers
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked>
-                Show column headers
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem checked>
-                Show grid lines
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <ZoomIn className="h-4 w-4 mr-2" />
-                Zoom
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Eye className="h-4 w-4 mr-2" />
-                Presentation mode
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 lg:h-8 px-2 lg:px-3 text-xs lg:text-sm">
+                  View
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-background border border-border z-50">
+                <DropdownMenuCheckboxItem checked>
+                  Show row numbers
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem checked>
+                  Show column headers
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem checked>
+                  Show grid lines
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <ZoomIn className="h-4 w-4 mr-2" />
+                  Zoom
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Presentation mode
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                Insert
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background border border-border">
-              <DropdownMenuItem>
-                <Code2 className="h-4 w-4 mr-2" />
-                Code cell
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Chart
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Table className="h-4 w-4 mr-2" />
-                Table
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Checkbox
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Plus className="h-4 w-4 mr-2" />
-                New sheet
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Grouped menu for secondary actions */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 lg:h-8 px-2 lg:px-3 text-xs lg:text-sm">
+                  More
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-background border border-border z-50">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Insert
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem>
+                      <Code2 className="h-4 w-4 mr-2" />
+                      Code cell
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Chart
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Table className="h-4 w-4 mr-2" />
+                      Table
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Checkbox
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New sheet
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Palette className="h-4 w-4 mr-2" />
+                    Format
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Hash className="h-4 w-4 mr-2" />
+                        Number
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem>Automatic</DropdownMenuItem>
+                        <DropdownMenuItem>Number</DropdownMenuItem>
+                        <DropdownMenuItem>Percent</DropdownMenuItem>
+                        <DropdownMenuItem>Currency</DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Date
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem>Date</DropdownMenuItem>
+                        <DropdownMenuItem>Time</DropdownMenuItem>
+                        <DropdownMenuItem>Date time</DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Bold className="h-4 w-4 mr-2" />
+                      Bold
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Italic className="h-4 w-4 mr-2" />
+                      Italic
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Palette className="h-4 w-4 mr-2" />
+                      Text color
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Clear formatting
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                Format
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background border border-border">
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Hash className="h-4 w-4 mr-2" />
-                  Number
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem>Automatic</DropdownMenuItem>
-                  <DropdownMenuItem>Number</DropdownMenuItem>
-                  <DropdownMenuItem>Percent</DropdownMenuItem>
-                  <DropdownMenuItem>Currency</DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Date
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem>Date</DropdownMenuItem>
-                  <DropdownMenuItem>Time</DropdownMenuItem>
-                  <DropdownMenuItem>Date time</DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Bold className="h-4 w-4 mr-2" />
-                Bold
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Italic className="h-4 w-4 mr-2" />
-                Italic
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Palette className="h-4 w-4 mr-2" />
-                Text color
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear formatting
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                Help
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background border border-border">
-              <DropdownMenuItem>
-                <BookOpen className="h-4 w-4 mr-2" />
-                Documentation
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Calculator className="h-4 w-4 mr-2" />
-                Quadratic 101
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Forum
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Github className="h-4 w-4 mr-2" />
-                GitHub
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                External resources
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm">
-                Feedback
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background border border-border">
-              <DropdownMenuItem>
-                <Mail className="h-4 w-4 mr-2" />
-                Contact us
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Twitter className="h-4 w-4 mr-2" />
-                Twitter/X
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Community
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Help & Documentation
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Feedback
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
 
         {/* Middle Section - Cell Reference & Formatting (Hidden on small screens) */}
-        <div className="hidden lg:flex items-center gap-2 xl:gap-3 min-w-0">
-          <div className="flex items-center gap-1 xl:gap-2">
+        <div className="hidden xl:flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1">
             <Input 
               value={selectedCell} 
-              className="w-16 xl:w-20 h-6 xl:h-8 text-center text-xs xl:text-sm"
+              className="w-16 h-6 text-center text-xs"
               readOnly
             />
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <Hash className="h-3 w-3 xl:h-4 xl:w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Hash className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <Type className="h-3 w-3 xl:h-4 xl:w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Type className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <DollarSign className="h-3 w-3 xl:h-4 xl:w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0 hidden xl:flex">
-              <Percent className="h-3 w-3 xl:h-4 xl:w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0 hidden xl:flex">
-              <Calendar className="h-3 w-3 xl:h-4 xl:w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <DollarSign className="h-3 w-3" />
             </Button>
           </div>
           
-          <Separator orientation="vertical" className="h-4 xl:h-6" />
+          <Separator orientation="vertical" className="h-4" />
           
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <Bold className="h-3 w-3 xl:h-4 xl:w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Bold className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <Italic className="h-3 w-3 xl:h-4 xl:w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Italic className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0 hidden xl:flex">
-              <Underline className="h-3 w-3 xl:h-4 xl:w-4" />
-            </Button>
-          </div>
-          
-          <Separator orientation="vertical" className="h-4 xl:h-6 hidden xl:block" />
-          
-          <div className="hidden xl:flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <AlignLeft className="h-3 w-3 xl:h-4 xl:w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <AlignCenter className="h-3 w-3 xl:h-4 xl:w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <AlignRight className="h-3 w-3 xl:h-4 xl:w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <Merge className="h-3 w-3 xl:h-4 xl:w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 xl:h-8 xl:w-8 p-0">
-              <Grid3x3 className="h-3 w-3 xl:h-4 xl:w-4" />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Underline className="h-3 w-3" />
             </Button>
           </div>
         </div>
@@ -519,7 +479,7 @@ export default function SpreadsheetEditor() {
                   </div>
                   <div>
                     <div className="font-medium text-sm">Give me sample data</div>
-                    <div className="text-xs text-muted-foreground">Sample data is a great way to get started with Quadratic.</div>
+                    <div className="text-xs text-muted-foreground">Sample data is a great way to get started with SmartBiz AI.</div>
                   </div>
                 </div>
 
@@ -570,15 +530,15 @@ export default function SpreadsheetEditor() {
             onSendMessage={handleSendMessage}
           >
             {/* Spreadsheet Grid */}
-            <div className="h-full overflow-auto relative">
-              <div className="relative pt-12">
+            <div className="h-full overflow-auto relative bg-background">
+              <div className="relative min-w-max">
                 {/* Column Headers */}
                 <div className="sticky top-0 z-10 flex bg-muted border-b border-border">
-                  <div className="w-12 h-8 border-r border-border bg-muted"></div>
+                  <div className="w-12 h-8 border-r border-border bg-muted shrink-0"></div>
                   {columns.map((col) => (
                     <div 
                       key={col}
-                      className="w-24 h-8 border-r border-border flex items-center justify-center text-sm font-medium"
+                      className="w-24 h-8 border-r border-border flex items-center justify-center text-sm font-medium shrink-0"
                     >
                       {col}
                     </div>
@@ -589,7 +549,7 @@ export default function SpreadsheetEditor() {
                 {rows.map((row) => (
                   <div key={row} className="flex border-b border-border">
                     {/* Row Header */}
-                    <div className="w-12 h-8 border-r border-border bg-muted flex items-center justify-center text-sm font-medium">
+                    <div className="w-12 h-8 border-r border-border bg-muted flex items-center justify-center text-sm font-medium shrink-0">
                       {row}
                     </div>
                     
@@ -601,7 +561,7 @@ export default function SpreadsheetEditor() {
                       return (
                         <div
                           key={cellId}
-                          className={`w-24 h-8 border-r border-border relative cursor-cell ${
+                          className={`w-24 h-8 border-r border-border relative cursor-cell shrink-0 ${
                             isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-muted/50'
                           }`}
                           onClick={() => setSelectedCell(cellId)}
@@ -709,7 +669,7 @@ export default function SpreadsheetEditor() {
                   <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                     <span className="text-xs">🔗</span>
                   </div>
-                  <span className="font-medium">[Demo] Quadratic public data</span>
+                  <span className="font-medium">[Demo] SmartBiz AI public data</span>
                 </div>
                 
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">

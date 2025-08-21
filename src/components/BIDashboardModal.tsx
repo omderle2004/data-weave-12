@@ -103,6 +103,71 @@ export function BIDashboardModal({ isOpen, onClose }: BIDashboardModalProps) {
             </CardContent>
           </Card>
 
+          {/* Statistical Analysis Module */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base font-medium">Statistical Analysis</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-muted/30 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">$1,247.89</p>
+                  <p className="text-sm text-muted-foreground">Mean Revenue</p>
+                </div>
+                <div className="text-center p-3 bg-muted/30 rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">$1,123.84</p>
+                  <p className="text-sm text-muted-foreground">Median Revenue</p>
+                </div>
+                <div className="text-center p-3 bg-muted/30 rounded-lg">
+                  <p className="text-2xl font-bold text-purple-600">±$425.67</p>
+                  <p className="text-sm text-muted-foreground">Std Deviation</p>
+                </div>
+                <div className="text-center p-3 bg-muted/30 rounded-lg">
+                  <p className="text-2xl font-bold text-orange-600">181,190</p>
+                  <p className="text-sm text-muted-foreground">Variance</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Predictive Functions Module */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base font-medium">Predictive Analysis</CardTitle>
+              <Brain className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg border border-purple-200/20">
+                  <div className="flex items-center gap-3 mb-3">
+                    <TrendingUp className="h-5 w-5 text-purple-500" />
+                    <h4 className="font-medium">Revenue Forecast</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Based on current trends, revenue is projected to increase by 15-20% next quarter.
+                  </p>
+                  <div className="text-xs text-muted-foreground">
+                    Confidence Level: 87% | Model: Linear Regression
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-gradient-to-r from-green-500/10 to-teal-500/10 rounded-lg border border-green-200/20">
+                  <div className="flex items-center gap-3 mb-3">
+                    <BarChart3 className="h-5 w-5 text-green-500" />
+                    <h4 className="font-medium">Demand Prediction</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Smartphone demand likely to peak in Q2. Consider inventory adjustments.
+                  </p>
+                  <div className="text-xs text-muted-foreground">
+                    Confidence Level: 92% | Model: Time Series Analysis
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Tables Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>

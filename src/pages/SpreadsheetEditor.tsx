@@ -20,6 +20,7 @@ import {
 import { FileImport } from "@/components/FileImport";
 import { ResizableQuestionPanel } from "@/components/ResizableQuestionPanel";
 import { BIDashboardModal } from "@/components/BIDashboardModal";
+import { DataPreprocessingModal } from "@/components/DataPreprocessingModal";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,6 +67,7 @@ export default function SpreadsheetEditor() {
   const [projectName, setProjectName] = useState<string>("Untitled");
   const [activeView, setActiveView] = useState<'analyze' | 'dashboard'>('analyze');
   const [showBIDashboard, setShowBIDashboard] = useState(false);
+  const [showDataPreprocessing, setShowDataPreprocessing] = useState(false);
 
   // Load project data if projectId exists
   useEffect(() => {
@@ -541,14 +543,28 @@ export default function SpreadsheetEditor() {
               <div className="text-sm font-medium mb-3">SmartBiz AI</div>
               
               <div className="space-y-2">
-                <Button
-                  variant={activeView === 'analyze' ? 'default' : 'outline'}
-                  className="w-full justify-start h-12"
-                  onClick={() => setActiveView('analyze')}
-                >
-                  <Activity className="h-4 w-4 mr-2" />
-                  Analyze Your Data
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={activeView === 'analyze' ? 'default' : 'outline'}
+                      className="w-full justify-start h-12"
+                      onClick={() => setActiveView('analyze')}
+                    >
+                      <Activity className="h-4 w-4 mr-2" />
+                      Analyze Your Data
+                      <ChevronDown className="h-3 w-3 ml-auto" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-background border border-border z-50 w-56">
+                    <DropdownMenuItem 
+                      onClick={() => setShowDataPreprocessing(true)}
+                      className="cursor-pointer"
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Data PreProcessing
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 <Button
                   variant={activeView === 'dashboard' ? 'default' : 'outline'}
@@ -789,6 +805,12 @@ export default function SpreadsheetEditor() {
           setShowBIDashboard(false);
           setActiveView('analyze');
         }} 
+      />
+
+      {/* Data Preprocessing Modal */}
+      <DataPreprocessingModal 
+        isOpen={showDataPreprocessing} 
+        onClose={() => setShowDataPreprocessing(false)} 
       />
     </div>
     </ProtectedRoute>

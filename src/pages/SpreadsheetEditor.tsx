@@ -14,10 +14,12 @@ import {
   Image, ChevronLeft, ChevronRight, X, Undo, Redo, Scissors,
   Copy, FileText, Calculator, PieChart, Table, CheckSquare,
   Palette, ArrowUpDown, Trash2, ExternalLink, BookOpen,
-  Github, Twitter, Mail, Database, Upload, FileUp, Link, Code
+  Github, Twitter, Mail, Database, Upload, FileUp, Link, Code,
+  Activity
 } from "lucide-react";
 import { FileImport } from "@/components/FileImport";
 import { ResizableQuestionPanel } from "@/components/ResizableQuestionPanel";
+import { BIDashboardModal } from "@/components/BIDashboardModal";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,6 +64,8 @@ export default function SpreadsheetEditor() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(projectId || null);
   const [projectName, setProjectName] = useState<string>("Untitled");
+  const [activeView, setActiveView] = useState<'analyze' | 'dashboard'>('analyze');
+  const [showBIDashboard, setShowBIDashboard] = useState(false);
 
   // Load project data if projectId exists
   useEffect(() => {
@@ -518,45 +522,75 @@ export default function SpreadsheetEditor() {
               </div>
             </div>
 
-            {/* AI Assistant Cards */}
+            {/* Navigation Buttons */}
             <div className="p-4 space-y-3">
-              <div className="text-sm font-medium mb-3">What can I help with?</div>
+              <div className="text-sm font-medium mb-3">SmartBiz AI</div>
               
               <div className="space-y-2">
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Grid3x3 className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Give me sample data</div>
-                    <div className="text-xs text-muted-foreground">Sample data is a great way to get started with SmartBiz AI.</div>
-                  </div>
-                </div>
+                <Button
+                  variant={activeView === 'analyze' ? 'default' : 'outline'}
+                  className="w-full justify-start h-12"
+                  onClick={() => setActiveView('analyze')}
+                >
+                  <Activity className="h-4 w-4 mr-2" />
+                  Analyze Your Data
+                </Button>
 
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <BarChart3 className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Build a chart</div>
-                    <div className="text-xs text-muted-foreground">Visualize your data with a chart.</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Code2 className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Generate code</div>
-                    <div className="text-xs text-muted-foreground">Use code to manipulate data, query APIs, and more.</div>
-                  </div>
-                </div>
+                <Button
+                  variant={activeView === 'dashboard' ? 'default' : 'outline'}
+                  className="w-full justify-start h-12"
+                  onClick={() => {
+                    setActiveView('dashboard');
+                    setShowBIDashboard(true);
+                  }}
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  BI Dashboard
+                </Button>
               </div>
             </div>
 
+            {/* AI Assistant Cards - Only show when in analyze view */}
+            {activeView === 'analyze' && (
+              <div className="p-4 space-y-3 border-t border-border">
+                <div className="text-sm font-medium mb-3">What can I help with?</div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Grid3x3 className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Give me sample data</div>
+                      <div className="text-xs text-muted-foreground">Sample data is a great way to get started with SmartBiz AI.</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <BarChart3 className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Build a chart</div>
+                      <div className="text-xs text-muted-foreground">Visualize your data with a chart.</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <Code2 className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Generate code</div>
+                      <div className="text-xs text-muted-foreground">Use code to manipulate data, query APIs, and more.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Sheet Navigation */}
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-border mt-auto">
               <div className="flex items-center gap-2 mb-3">
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <Plus className="h-4 w-4" />
@@ -733,6 +767,15 @@ export default function SpreadsheetEditor() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* BI Dashboard Modal */}
+      <BIDashboardModal 
+        isOpen={showBIDashboard} 
+        onClose={() => {
+          setShowBIDashboard(false);
+          setActiveView('analyze');
+        }} 
+      />
     </div>
     </ProtectedRoute>
   );

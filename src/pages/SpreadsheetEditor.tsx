@@ -481,10 +481,24 @@ export default function SpreadsheetEditor() {
           </div>
           
           <div className="flex items-center gap-1 lg:gap-2">
-            <Button size="sm" className="h-6 lg:h-8 text-xs lg:text-sm px-2 lg:px-3">
-              <Share className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
-              <span className="hidden sm:inline">Share</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="h-6 lg:h-8 text-xs lg:text-sm px-2 lg:px-3">
+                  <Share className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+                  <span className="hidden sm:inline">Share</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-background border border-border z-50">
+                <DropdownMenuItem onClick={() => toast.success('Generating PDF report...')}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Download Analysis Report
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast.success('Opening email dialog...')}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Share via Email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="ghost" size="sm" className="h-6 w-6 lg:h-8 lg:w-8 p-0">
               <Users className="h-3 w-3 lg:h-4 lg:w-4" />
             </Button>

@@ -61,7 +61,7 @@ export function ResizableQuestionPanel({
 
   return (
     <PanelGroup direction="vertical" className="h-full w-full">
-      <Panel defaultSize={65} minSize={35}>
+      <Panel defaultSize={55} minSize={35}>
         <div className="h-full w-full overflow-hidden">
           {children}
         </div>
@@ -71,10 +71,10 @@ export function ResizableQuestionPanel({
         <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
       </PanelResizeHandle>
       
-      <Panel defaultSize={35} minSize={25} maxSize={75}>
+      <Panel defaultSize={45} minSize={25} maxSize={75}>
         <PanelGroup direction="horizontal" className="h-full">
           {/* Input Section - Left aligned with columns A-H */}
-          <Panel defaultSize={38} minSize={30} maxSize={60}>
+          <Panel defaultSize={42} minSize={35} maxSize={65}>
             <div className="h-full bg-card border-t border-border flex flex-col">
               {/* Header */}
               <div className="p-3 lg:p-4 border-b border-border shrink-0">
@@ -97,22 +97,24 @@ export function ResizableQuestionPanel({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-1 lg:gap-2">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 lg:h-8 lg:w-8 p-0">
+                <div className="flex items-end justify-between gap-2 shrink-0">
+                  <div className="flex items-center gap-1 lg:gap-2 flex-wrap">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 lg:h-8 lg:w-8 p-0 shrink-0">
                       <Paperclip className="h-3 w-3 lg:h-4 lg:w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 lg:h-8 lg:w-8 p-0">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 lg:h-8 lg:w-8 p-0 shrink-0">
                       <Image className="h-3 w-3 lg:h-4 lg:w-4" />
                     </Button>
-                    <VoiceInput onTranscription={handleVoiceTranscription} />
+                    <div className="shrink-0">
+                      <VoiceInput onTranscription={handleVoiceTranscription} />
+                    </div>
                   </div>
                   
                   <Button 
                     size="sm" 
                     onClick={handleSendMessage}
                     disabled={!chatMessage.trim() || isAiLoading}
-                    className="h-7 lg:h-8 text-xs lg:text-sm"
+                    className="h-7 lg:h-8 text-xs lg:text-sm shrink-0 min-w-fit"
                   >
                     <Send className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
                     {isAiLoading ? 'Sending...' : 'Send'}
@@ -137,7 +139,7 @@ export function ResizableQuestionPanel({
           </PanelResizeHandle>
           
           {/* Output Section - Right aligned with columns I-Z */}
-          <Panel defaultSize={62} minSize={40} maxSize={70}>
+          <Panel defaultSize={58} minSize={35} maxSize={65}>
             <div className="h-full border-t border-border">
               <AIResponsePanel responses={aiResponses} isLoading={isAiLoading} />
             </div>

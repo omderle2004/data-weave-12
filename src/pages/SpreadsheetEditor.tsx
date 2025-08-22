@@ -810,7 +810,11 @@ export default function SpreadsheetEditor() {
       {/* Data Preprocessing Modal */}
       <DataPreprocessingModal 
         isOpen={showDataPreprocessing} 
-        onClose={() => setShowDataPreprocessing(false)} 
+        onClose={() => setShowDataPreprocessing(false)}
+        importedData={importedData}
+        onDataUpdate={(newData) => {
+          handleDataImport(newData, currentProjectId || undefined);
+        }}
       />
     </div>
     </ProtectedRoute>

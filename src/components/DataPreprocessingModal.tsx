@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,50 +11,195 @@ import {
   Brain,
   Sparkles,
   FileText,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useParams } from 'react-router-dom';
 
 interface DataPreprocessingModalProps {
   isOpen: boolean;
   onClose: () => void;
+  importedData?: string[][] | null;
+  onDataUpdate?: (newData: string[][]) => void;
 }
 
-export function DataPreprocessingModal({ isOpen, onClose }: DataPreprocessingModalProps) {
-  const dataInsights = [
-    {
-      type: 'warning',
-      icon: AlertTriangle,
-      title: 'Missing Values',
-      description: '12 null values detected in Customer Name column',
-      severity: 'medium',
-      count: 12
-    },
-    {
-      type: 'error',
-      icon: XCircle,
-      title: 'Duplicate Records',
-      description: '3 duplicate entries found (Order IDs: ORD1002, ORD1005, ORD1008)',
-      severity: 'high',
-      count: 3
-    },
-    {
-      type: 'warning',
-      icon: AlertTriangle,
-      title: 'Data Type Issues',
-      description: 'Date column contains inconsistent formats (MM/DD/YYYY vs DD-MM-YYYY)',
-      severity: 'medium',
-      count: 8
-    },
-    {
-      type: 'success',
-      icon: CheckCircle,
-      title: 'Complete Data',
-      description: 'Price and Quantity columns are 100% complete',
-      severity: 'low',
-      count: 0
+export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUpdate }: DataPreprocessingModalProps) {
+  const { projectId } = useParams();
+  const [isLoading, setIsLoading] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [qualityScore, setQualityScore] = useState(0);
+  const [hasData, setHasData] = useState(false);
+  const [cleaningSummary, setCleaningSummary] = useState<any>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (importedData && importedData.length > 0) {
+        setHasData(true);
+        analyzeData(importedData);
+      } else {
+        setHasData(false);
+        resetAnalysis();
+      }
     }
-  ];
+  }, [isOpen, importedData]);
+
+  const resetAnalysis = () => {
+    setAnalysisResults(null);
+    setQualityScore(0);
+    setCleaningSummary(null);
+  };
+
+  const analyzeData = (data: string[][]) => {
+    if (!data || data.length === 0) return;
+
+    const issues = {
+      missingValues: 0,
+      duplicateRows: 0,
+      dataTypeIssues: 0,
+      inconsistentFormats: 0
+    };
+
+    const seenRows = new Set();
+    let totalCells = 0;
+    let goodCells = 0;
+
+    data.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        totalCells++;
+        
+        // Check for missing values
+        if (!cell || cell.trim() === '' || cell.toLowerCase() === 'null' || cell.toLowerCase() === 'n/a') {
+          issues.missingValues++;
+        } else {
+          goodCells++;
+        }
+
+        // Check for date format inconsistencies
+        if (rowIndex > 0 && cell && cell.includes('/') && cell.includes('-')) {
+          issues.inconsistentFormats++;
+        }
+      });
+
+      // Check for duplicates
+      const rowString = row.join('|');
+      if (seenRows.has(rowString) && rowIndex > 0) { // Don't count header as duplicate
+        issues.duplicateRows++;
+      } else {
+        seenRows.add(rowString);
+      }
+    });
+
+    setAnalysisResults(issues);
+    setQualityScore(Math.round((goodCells / totalCells) * 100));
+  };
+
+  const handleAIDataCleaning = async () => {
+    if (!importedData || !hasData) {
+      toast.error('No data available to clean');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('clean-data-with-ai', {
+        body: {
+          data: importedData,
+          projectId: projectId
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (result.success) {
+        setCleaningSummary(result.summary);
+        setQualityScore(result.qualityScore);
+        
+        // Update the data in parent component
+        if (onDataUpdate && result.cleanedData) {
+          onDataUpdate(result.cleanedData);
+        }
+
+        // Re-analyze the cleaned data
+        analyzeData(result.cleanedData);
+        
+        toast.success(`Data cleaned successfully! ${result.summary.rowsRemoved} rows removed, ${result.summary.valuesFilled} values filled.`);
+      } else {
+        throw new Error(result.error || 'Failed to clean data');
+      }
+    } catch (error) {
+      console.error('Error cleaning data:', error);
+      toast.error(`Failed to clean data: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getDataInsights = () => {
+    if (!hasData || !analysisResults) {
+      return [{
+        type: 'info',
+        icon: Database,
+        title: 'No Data Available',
+        description: 'Please upload your data to get insights.',
+        severity: 'low',
+        count: 0
+      }];
+    }
+
+    const insights = [];
+
+    if (analysisResults.missingValues > 0) {
+      insights.push({
+        type: 'warning',
+        icon: AlertTriangle,
+        title: 'Missing Values',
+        description: `${analysisResults.missingValues} null or empty values detected`,
+        severity: 'medium',
+        count: analysisResults.missingValues
+      });
+    }
+
+    if (analysisResults.duplicateRows > 0) {
+      insights.push({
+        type: 'error',
+        icon: XCircle,
+        title: 'Duplicate Records',
+        description: `${analysisResults.duplicateRows} duplicate rows found`,
+        severity: 'high',
+        count: analysisResults.duplicateRows
+      });
+    }
+
+    if (analysisResults.inconsistentFormats > 0) {
+      insights.push({
+        type: 'warning',
+        icon: AlertTriangle,
+        title: 'Data Type Issues',
+        description: `${analysisResults.inconsistentFormats} cells with inconsistent date formats detected`,
+        severity: 'medium',
+        count: analysisResults.inconsistentFormats
+      });
+    }
+
+    if (insights.length === 0) {
+      insights.push({
+        type: 'success',
+        icon: CheckCircle,
+        title: 'Data Quality Good',
+        description: 'No major data quality issues detected',
+        severity: 'low',
+        count: 0
+      });
+    }
+
+    return insights;
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -100,7 +245,11 @@ export function DataPreprocessingModal({ isOpen, onClose }: DataPreprocessingMod
                     <XCircle className="h-5 w-5 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">3</p>
+                    <p className="text-2xl font-bold">
+                      {hasData && analysisResults ? 
+                        (analysisResults.duplicateRows > 0 ? analysisResults.duplicateRows : 0) : 
+                        0}
+                    </p>
                     <p className="text-sm text-muted-foreground">Critical Issues</p>
                   </div>
                 </div>
@@ -114,7 +263,9 @@ export function DataPreprocessingModal({ isOpen, onClose }: DataPreprocessingMod
                     <AlertTriangle className="h-5 w-5 text-yellow-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">20</p>
+                    <p className="text-2xl font-bold">
+                      {hasData && analysisResults ? analysisResults.missingValues : 0}
+                    </p>
                     <p className="text-sm text-muted-foreground">Missing Values</p>
                   </div>
                 </div>
@@ -128,13 +279,39 @@ export function DataPreprocessingModal({ isOpen, onClose }: DataPreprocessingMod
                     <CheckCircle className="h-5 w-5 text-green-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">87%</p>
+                    <p className="text-2xl font-bold">{qualityScore}%</p>
                     <p className="text-sm text-muted-foreground">Data Quality Score</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Show cleaning summary if available */}
+          {cleaningSummary && (
+            <Card className="bg-green-50 border-green-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <h4 className="font-medium text-green-800">Data Cleaning Complete</h4>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="font-semibold text-green-800">{cleaningSummary.rowsRemoved}</p>
+                    <p className="text-green-600">Rows Removed</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-green-800">{cleaningSummary.valuesFilled}</p>
+                    <p className="text-green-600">Values Filled</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-green-800">{cleaningSummary.formatsStandardized || 0}</p>
+                    <p className="text-green-600">Formats Fixed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Detailed Data Insights */}
           <Card>
@@ -144,7 +321,7 @@ export function DataPreprocessingModal({ isOpen, onClose }: DataPreprocessingMod
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {dataInsights.map((insight, index) => (
+                {getDataInsights().map((insight, index) => (
                   <div key={index} className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg">
                     <insight.icon className={`h-5 w-5 mt-0.5 ${getSeverityColor(insight.severity)}`} />
                     <div className="flex-1">
@@ -183,9 +360,22 @@ export function DataPreprocessingModal({ isOpen, onClose }: DataPreprocessingMod
                   <p className="text-sm text-muted-foreground mb-4">
                     Our AI will automatically fix common data issues including missing values, duplicates, and format inconsistencies.
                   </p>
-                  <Button className="w-full" onClick={() => alert('AI data cleaning initiated!')}>
-                    <Brain className="h-4 w-4 mr-2" />
-                    Fix Data with AI
+                  <Button 
+                    className="w-full" 
+                    onClick={handleAIDataCleaning}
+                    disabled={!hasData || isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        Fix Data with AI
+                      </>
+                    )}
                   </Button>
                 </div>
 

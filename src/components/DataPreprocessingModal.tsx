@@ -7,17 +7,9 @@ import {
   AlertTriangle, 
   CheckCircle, 
   XCircle, 
-  Database, 
-  Brain,
-  Sparkles,
-  FileText,
-  BarChart3,
-  Loader2
+  Database
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { useParams } from 'react-router-dom';
 
 interface DataPreprocessingModalProps {
   isOpen: boolean;
@@ -26,13 +18,10 @@ interface DataPreprocessingModalProps {
   onDataUpdate?: (newData: string[][]) => void;
 }
 
-export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUpdate }: DataPreprocessingModalProps) {
-  const { projectId } = useParams();
-  const [isLoading, setIsLoading] = useState(false);
+export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPreprocessingModalProps) {
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [qualityScore, setQualityScore] = useState(0);
   const [hasData, setHasData] = useState(false);
-  const [cleaningSummary, setCleaningSummary] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -49,7 +38,6 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
   const resetAnalysis = () => {
     setAnalysisResults(null);
     setQualityScore(0);
-    setCleaningSummary(null);
   };
 
   const analyzeData = (data: string[][]) => {
@@ -96,49 +84,6 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
     setQualityScore(Math.round((goodCells / totalCells) * 100));
   };
 
-  const handleAIDataCleaning = async () => {
-    if (!importedData || !hasData) {
-      toast.error('No data available to clean');
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      const { data: result, error } = await supabase.functions.invoke('clean-data-with-ai', {
-        body: {
-          data: importedData,
-          projectId: projectId
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (result.success) {
-        setCleaningSummary(result.summary);
-        setQualityScore(result.qualityScore);
-        
-        // Update the data in parent component
-        if (onDataUpdate && result.cleanedData) {
-          onDataUpdate(result.cleanedData);
-        }
-
-        // Re-analyze the cleaned data
-        analyzeData(result.cleanedData);
-        
-        toast.success(`Data cleaned successfully! ${result.summary.rowsRemoved} rows removed, ${result.summary.valuesFilled} values filled.`);
-      } else {
-        throw new Error(result.error || 'Failed to clean data');
-      }
-    } catch (error) {
-      console.error('Error cleaning data:', error);
-      toast.error(`Failed to clean data: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getDataInsights = () => {
     if (!hasData || !analysisResults) {
@@ -203,10 +148,10 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'text-destructive';
-      case 'medium': return 'text-warning';
-      case 'low': return 'text-success';
-      default: return 'text-muted-foreground';
+      case 'high': return 'text-red-600';
+      case 'medium': return 'text-orange-600';
+      case 'low': return 'text-green-600';
+      default: return 'text-gray-600';
     }
   };
 
@@ -241,8 +186,8 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                   <div className="p-2 bg-destructive/10 rounded-lg">
-                     <XCircle className="h-5 w-5 text-destructive" />
+                   <div className="p-2 bg-red-100 rounded-lg">
+                     <XCircle className="h-5 w-5 text-red-600" />
                    </div>
                   <div>
                     <p className="text-2xl font-bold">
@@ -259,8 +204,8 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                   <div className="p-2 bg-warning/10 rounded-lg">
-                     <AlertTriangle className="h-5 w-5 text-warning" />
+                   <div className="p-2 bg-orange-100 rounded-lg">
+                     <AlertTriangle className="h-5 w-5 text-orange-600" />
                    </div>
                   <div>
                     <p className="text-2xl font-bold">
@@ -275,8 +220,8 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                   <div className="p-2 bg-success/10 rounded-lg">
-                     <CheckCircle className="h-5 w-5 text-success" />
+                   <div className="p-2 bg-green-100 rounded-lg">
+                     <CheckCircle className="h-5 w-5 text-green-600" />
                    </div>
                   <div>
                     <p className="text-2xl font-bold">{qualityScore}%</p>
@@ -287,31 +232,6 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             </Card>
           </div>
 
-          {/* Show cleaning summary if available */}
-           {cleaningSummary && (
-             <Card className="bg-success/5 border-success/20">
-               <CardContent className="p-4">
-                 <div className="flex items-center gap-3 mb-3">
-                   <CheckCircle className="h-5 w-5 text-success" />
-                   <h4 className="font-medium text-success">Data Cleaning Complete</h4>
-                 </div>
-                 <div className="grid grid-cols-3 gap-4 text-sm">
-                   <div className="text-center">
-                     <p className="font-semibold text-success">{cleaningSummary.rowsRemoved}</p>
-                     <p className="text-success/80">Rows Removed</p>
-                   </div>
-                   <div className="text-center">
-                     <p className="font-semibold text-success">{cleaningSummary.valuesFilled}</p>
-                     <p className="text-success/80">Values Filled</p>
-                   </div>
-                   <div className="text-center">
-                     <p className="font-semibold text-success">{cleaningSummary.formatsStandardized || 0}</p>
-                     <p className="text-success/80">Formats Fixed</p>
-                   </div>
-                 </div>
-               </CardContent>
-             </Card>
-           )}
 
           {/* Detailed Data Insights */}
           <Card>
@@ -344,61 +264,6 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             </CardContent>
           </Card>
 
-          {/* AI-Powered Actions */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-base font-medium">AI-Powered Data Cleaning</CardTitle>
-              <Brain className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                 <div className="p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/20">
-                   <div className="flex items-center gap-3 mb-3">
-                     <Sparkles className="h-5 w-5 text-primary" />
-                     <h4 className="font-medium">Smart Data Cleaning</h4>
-                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Our AI will automatically fix common data issues including missing values, duplicates, and format inconsistencies.
-                  </p>
-                  <Button 
-                    className="w-full" 
-                    onClick={handleAIDataCleaning}
-                    disabled={!hasData || isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Brain className="h-4 w-4 mr-2" />
-                        Fix Data with AI
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Generate Report</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Export detailed data quality report</p>
-                  </div>
-
-                  <div className="p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">View Statistics</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Analyze data distribution patterns</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </DialogContent>
     </Dialog>

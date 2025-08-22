@@ -203,9 +203,9 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'text-red-500';
-      case 'medium': return 'text-yellow-500';
-      case 'low': return 'text-green-500';
+      case 'high': return 'text-destructive';
+      case 'medium': return 'text-warning';
+      case 'low': return 'text-success';
       default: return 'text-muted-foreground';
     }
   };
@@ -241,9 +241,9 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-500/10 rounded-lg">
-                    <XCircle className="h-5 w-5 text-red-500" />
-                  </div>
+                   <div className="p-2 bg-destructive/10 rounded-lg">
+                     <XCircle className="h-5 w-5 text-destructive" />
+                   </div>
                   <div>
                     <p className="text-2xl font-bold">
                       {hasData && analysisResults ? 
@@ -259,9 +259,9 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-500/10 rounded-lg">
-                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                  </div>
+                   <div className="p-2 bg-warning/10 rounded-lg">
+                     <AlertTriangle className="h-5 w-5 text-warning" />
+                   </div>
                   <div>
                     <p className="text-2xl font-bold">
                       {hasData && analysisResults ? analysisResults.missingValues : 0}
@@ -275,9 +275,9 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-500/10 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  </div>
+                   <div className="p-2 bg-success/10 rounded-lg">
+                     <CheckCircle className="h-5 w-5 text-success" />
+                   </div>
                   <div>
                     <p className="text-2xl font-bold">{qualityScore}%</p>
                     <p className="text-sm text-muted-foreground">Data Quality Score</p>
@@ -288,30 +288,30 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
           </div>
 
           {/* Show cleaning summary if available */}
-          {cleaningSummary && (
-            <Card className="bg-green-50 border-green-200">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <h4 className="font-medium text-green-800">Data Cleaning Complete</h4>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div className="text-center">
-                    <p className="font-semibold text-green-800">{cleaningSummary.rowsRemoved}</p>
-                    <p className="text-green-600">Rows Removed</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-green-800">{cleaningSummary.valuesFilled}</p>
-                    <p className="text-green-600">Values Filled</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-green-800">{cleaningSummary.formatsStandardized || 0}</p>
-                    <p className="text-green-600">Formats Fixed</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+           {cleaningSummary && (
+             <Card className="bg-success/5 border-success/20">
+               <CardContent className="p-4">
+                 <div className="flex items-center gap-3 mb-3">
+                   <CheckCircle className="h-5 w-5 text-success" />
+                   <h4 className="font-medium text-success">Data Cleaning Complete</h4>
+                 </div>
+                 <div className="grid grid-cols-3 gap-4 text-sm">
+                   <div className="text-center">
+                     <p className="font-semibold text-success">{cleaningSummary.rowsRemoved}</p>
+                     <p className="text-success/80">Rows Removed</p>
+                   </div>
+                   <div className="text-center">
+                     <p className="font-semibold text-success">{cleaningSummary.valuesFilled}</p>
+                     <p className="text-success/80">Values Filled</p>
+                   </div>
+                   <div className="text-center">
+                     <p className="font-semibold text-success">{cleaningSummary.formatsStandardized || 0}</p>
+                     <p className="text-success/80">Formats Fixed</p>
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
+           )}
 
           {/* Detailed Data Insights */}
           <Card>
@@ -352,11 +352,11 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg border border-blue-200/20">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Sparkles className="h-5 w-5 text-blue-500" />
-                    <h4 className="font-medium">Smart Data Cleaning</h4>
-                  </div>
+                 <div className="p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/20">
+                   <div className="flex items-center gap-3 mb-3">
+                     <Sparkles className="h-5 w-5 text-primary" />
+                     <h4 className="font-medium">Smart Data Cleaning</h4>
+                   </div>
                   <p className="text-sm text-muted-foreground mb-4">
                     Our AI will automatically fix common data issues including missing values, duplicates, and format inconsistencies.
                   </p>

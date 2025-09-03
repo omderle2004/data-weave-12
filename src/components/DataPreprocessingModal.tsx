@@ -40,50 +40,100 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPr
     setQualityScore(0);
   };
 
-  const analyzeData = (data: string[][]) => {
-    if (!data || data.length === 0) return;
+  const analyzeData = (data: any[][]) => {
+    try {
+      if (!data || data.length === 0) return;
 
-    const issues = {
-      missingValues: 0,
-      duplicateRows: 0,
-      dataTypeIssues: 0,
-      inconsistentFormats: 0
-    };
+      const issues = {
+        missingValues: 0,
+        duplicateRows: 0,
+        dataTypeIssues: 0,
+        inconsistentFormats: 0,
+      };
 
-    const seenRows = new Set();
-    let totalCells = 0;
-    let goodCells = 0;
+      const seenRows = new Set<string>();
+      let totalCells = 0;
+      let goodCells = 0;
 
-    data.forEach((row, rowIndex) => {
-      row.forEach((cell, colIndex) => {
-        totalCells++;
-        
-        // Check for missing values
-        if (!cell || cell.trim() === '' || cell.toLowerCase() === 'null' || cell.toLowerCase() === 'n/a') {
-          issues.missingValues++;
+      // Helper: normalize value for comparisons
+      const normalize = (v: any) => {
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'string') return v.trim().toLowerCase();
+        if (typeof v === 'number' && Number.isNaN(v)) return '';
+        return String(v).trim().toLowerCase();
+      };
+
+      // Helper: detect data type of a value
+      const detectType = (v: any): 'empty' | 'number' | 'date' | 'boolean' | 'string' => {
+        if (v === null || v === undefined) return 'empty';
+        if (typeof v === 'number') return Number.isNaN(v) ? 'empty' : 'number';
+        if (typeof v === 'boolean') return 'boolean';
+        if (v instanceof Date) return 'date';
+        const s = typeof v === 'string' ? v.trim() : String(v).trim();
+        if (s === '') return 'empty';
+        const sLower = s.toLowerCase();
+        if (sLower === 'null' || sLower === 'n/a' || sLower === 'na' || sLower === 'nan') return 'empty';
+        // numeric-like string
+        if (/^[-+]?\d*(?:\.\d+)?$/.test(s) && s.replace(/[+\-]/g, '') !== '') return 'number';
+        // date-like string
+        const parsed = Date.parse(s);
+        if (!Number.isNaN(parsed)) return 'date';
+        return 'string';
+      };
+
+      // Track column type diversity (skip header row at index 0)
+      const colTypeSets: Array<Set<string>> = [];
+
+      data.forEach((row, rowIndex) => {
+        // Count duplicates (normalize all cells)
+        const rowString = (row || []).map((cell) => normalize(cell)).join('|');
+        if (seenRows.has(rowString) && rowIndex > 0) {
+          issues.duplicateRows++;
         } else {
-          goodCells++;
+          seenRows.add(rowString);
         }
 
-        // Check for date format inconsistencies
-        if (rowIndex > 0 && cell && cell.includes('/') && cell.includes('-')) {
-          issues.inconsistentFormats++;
-        }
+        (row || []).forEach((cell, colIndex) => {
+          totalCells++;
+
+          // Missing values handling (robust across types)
+          const isMissing = (() => {
+            if (cell === null || cell === undefined) return true;
+            if (typeof cell === 'number') return Number.isNaN(cell);
+            const s = typeof cell === 'string' ? cell : String(cell);
+            const sTrim = s.trim();
+            if (sTrim === '') return true;
+            const sLower = sTrim.toLowerCase();
+            return sLower === 'null' || sLower === 'n/a' || sLower === 'na' || sLower === 'nan';
+          })();
+
+          if (isMissing) {
+            issues.missingValues++;
+          } else {
+            goodCells++;
+          }
+
+          // Build column type sets for data type issues (skip header row)
+          if (rowIndex > 0) {
+            if (!colTypeSets[colIndex]) colTypeSets[colIndex] = new Set<string>();
+            const t = detectType(cell);
+            if (t !== 'empty') colTypeSets[colIndex].add(t);
+          }
+        });
       });
 
-      // Check for duplicates
-      const rowString = row.join('|');
-      if (seenRows.has(rowString) && rowIndex > 0) { // Don't count header as duplicate
-        issues.duplicateRows++;
-      } else {
-        seenRows.add(rowString);
-      }
-    });
+      // Count columns with mixed types as data type issues
+      issues.dataTypeIssues = colTypeSets.reduce((acc, set) => acc + (set && set.size > 1 ? 1 : 0), 0);
 
-    setAnalysisResults(issues);
-    setQualityScore(Math.round((goodCells / totalCells) * 100));
+      setAnalysisResults(issues);
+      const score = totalCells > 0 ? Math.round((goodCells / totalCells) * 100) : 0;
+      setQualityScore(score);
+    } catch (err) {
+      console.error('Data analysis failed:', err);
+      setAnalysisResults({ missingValues: 0, duplicateRows: 0, dataTypeIssues: 0, inconsistentFormats: 0 });
+      setQualityScore(0);
+    }
   };
-
 
   const getDataInsights = () => {
     if (!hasData || !analysisResults) {
@@ -121,14 +171,14 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPr
       });
     }
 
-    if (analysisResults.inconsistentFormats > 0) {
+    if (analysisResults.dataTypeIssues > 0) {
       insights.push({
         type: 'warning',
         icon: AlertTriangle,
         title: 'Data Type Issues',
-        description: `${analysisResults.inconsistentFormats} cells with inconsistent date formats detected`,
+        description: `${analysisResults.dataTypeIssues} columns contain mixed or invalid data types`,
         severity: 'medium',
-        count: analysisResults.inconsistentFormats
+        count: analysisResults.dataTypeIssues
       });
     }
 

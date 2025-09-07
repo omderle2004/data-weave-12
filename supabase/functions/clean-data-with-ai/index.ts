@@ -70,6 +70,36 @@ serve(async (req) => {
   }
 });
 
+async function processLargeDataset(data: string[][], analysis: any, projectId?: string) {
+  try {
+    const qualityAnalysis = analyzeDataQuality(data);
+    const cleaningResult = await cleanDataWithGemini(data, qualityAnalysis);
+    
+    if (projectId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (supabaseUrl && supabaseKey) {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        await supabase
+          .from('projects')
+          .update({ 
+            data: cleaningResult.cleanedData,
+            quality_score: calculateQualityScore(cleaningResult.cleanedData),
+            status: 'completed'
+          })
+          .eq('id', projectId);
+      }
+    }
+    
+    console.log('Large dataset processing completed');
+    return cleaningResult;
+  } catch (error) {
+    console.error('Background processing failed:', error);
+  }
+}
+
 function analyzeDataQuality(data: string[][]) {
   const issues = {
     missingValues: 0,

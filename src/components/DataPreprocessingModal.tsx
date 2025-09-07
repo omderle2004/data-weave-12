@@ -7,9 +7,13 @@ import {
   AlertTriangle, 
   CheckCircle, 
   XCircle, 
-  Database
+  Database,
+  Wand2,
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DataPreprocessingModalProps {
   isOpen: boolean;
@@ -18,10 +22,12 @@ interface DataPreprocessingModalProps {
   onDataUpdate?: (newData: string[][]) => void;
 }
 
-export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPreprocessingModalProps) {
+export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUpdate }: DataPreprocessingModalProps) {
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [qualityScore, setQualityScore] = useState(0);
   const [hasData, setHasData] = useState(false);
+  const [isFixingData, setIsFixingData] = useState(false);
+  const [dataTypeIssueDetails, setDataTypeIssueDetails] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -83,6 +89,8 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPr
 
       // Track column type diversity (skip header row at index 0)
       const colTypeSets: Array<Set<string>> = [];
+      const columnNames = data[0] || [];
+      const problematicColumns: string[] = [];
 
       data.forEach((row, rowIndex) => {
         // Count duplicates (normalize all cells)
@@ -123,7 +131,16 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPr
       });
 
       // Count columns with mixed types as data type issues
-      issues.dataTypeIssues = colTypeSets.reduce((acc, set) => acc + (set && set.size > 1 ? 1 : 0), 0);
+      colTypeSets.forEach((set, colIndex) => {
+        if (set && set.size > 1) {
+          issues.dataTypeIssues++;
+          if (columnNames[colIndex]) {
+            problematicColumns.push(columnNames[colIndex]);
+          }
+        }
+      });
+
+      setDataTypeIssueDetails(problematicColumns);
 
       setAnalysisResults(issues);
       const score = totalCells > 0 ? Math.round((goodCells / totalCells) * 100) : 0;
@@ -132,6 +149,54 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPr
       console.error('Data analysis failed:', err);
       setAnalysisResults({ missingValues: 0, duplicateRows: 0, dataTypeIssues: 0, inconsistentFormats: 0 });
       setQualityScore(0);
+    }
+  };
+
+  const handleFixWithAI = async () => {
+    if (!importedData || !analysisResults) {
+      toast.error('No data available to fix');
+      return;
+    }
+
+    setIsFixingData(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('clean-data-with-ai', {
+        body: { 
+          data: importedData,
+          analysis: analysisResults
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (result?.success && result?.cleanedData) {
+        onDataUpdate?.(result.cleanedData);
+        toast.success('Data successfully cleaned with AI');
+        
+        // Re-analyze the cleaned data
+        analyzeData(result.cleanedData);
+        
+        if (result.summary) {
+          // Format the summary for better readability
+          const summaryText = typeof result.summary === 'object' 
+            ? `Rows removed: ${result.summary.rowsRemoved || 0}, Values filled: ${result.summary.valuesFilled || 0}, Formats standardized: ${result.summary.formatsStandardized || 0}`
+            : result.summary;
+          toast.info(`Changes made: ${summaryText}`);
+        }
+        
+        if (result.qualityScore) {
+          toast.success(`New quality score: ${result.qualityScore}%`);
+        }
+      } else {
+        toast.error('No cleaned data returned from AI');
+      }
+    } catch (error) {
+      console.error('AI data cleaning error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to clean data with AI');
+    } finally {
+      setIsFixingData(false);
     }
   };
 
@@ -172,11 +237,15 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPr
     }
 
     if (analysisResults.dataTypeIssues > 0) {
+      const detailText = dataTypeIssueDetails.length > 0 
+        ? `Affected columns: ${dataTypeIssueDetails.join(', ')}` 
+        : `${analysisResults.dataTypeIssues} columns contain mixed or invalid data types`;
+      
       insights.push({
         type: 'warning',
         icon: AlertTriangle,
         title: 'Data Type Issues',
-        description: `${analysisResults.dataTypeIssues} columns contain mixed or invalid data types`,
+        description: detailText,
         severity: 'medium',
         count: analysisResults.dataTypeIssues
       });
@@ -282,6 +351,42 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData }: DataPr
             </Card>
           </div>
 
+
+          {/* AI Fix Section */}
+          {hasData && analysisResults && (analysisResults.missingValues > 0 || analysisResults.duplicateRows > 0 || analysisResults.dataTypeIssues > 0) && (
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Wand2 className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-blue-900">AI-Powered Data Cleaning</h3>
+                      <p className="text-sm text-blue-700">Let our AI automatically fix data quality issues</p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleFixWithAI}
+                    disabled={isFixingData}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isFixingData ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Fixing Data...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Fix with AI
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Detailed Data Insights */}
           <Card>

@@ -124,10 +124,11 @@ export function ResizableQuestionPanel({
         <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
       </PanelResizeHandle>
       
-      <Panel defaultSize={45} minSize={25} maxSize={75}>
-        <PanelGroup direction="horizontal" className="h-full">
-          {/* Input Section - Left aligned with columns A-H */}
-          <Panel defaultSize={42} minSize={35} maxSize={65}>
+      <Panel defaultSize={45} minSize={10} maxSize={90}>
+        <div className="h-full overflow-x-auto">
+          <PanelGroup direction="horizontal" className="h-full min-w-fit">
+            {/* Input Section - Default span A-E columns */}
+            <Panel defaultSize={35} minSize={20} maxSize={80}>
             <div className="h-full bg-card border-t border-border flex flex-col">
               {/* Header */}
               <div className="p-3 lg:p-4 border-b border-border shrink-0">
@@ -194,12 +195,13 @@ export function ResizableQuestionPanel({
           </PanelResizeHandle>
           
           {/* Output Section - Right aligned with columns I-Z */}
-          <Panel defaultSize={58} minSize={35} maxSize={65}>
+          <Panel defaultSize={65} minSize={20} maxSize={80}>
             <div className="h-full border-t border-border">
               <AIResponsePanel responses={aiResponses} isLoading={isAiLoading} />
             </div>
           </Panel>
-        </PanelGroup>
+          </PanelGroup>
+        </div>
       </Panel>
     </PanelGroup>
   );

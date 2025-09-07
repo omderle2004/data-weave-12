@@ -25,6 +25,9 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
   const [showColumnSelection, setShowColumnSelection] = useState(false);
   const [columnTypes, setColumnTypes] = useState<{numerical: string[], categorical: string[]}>({numerical: [], categorical: []});
   const [isGeneratingCharts, setIsGeneratingCharts] = useState(false);
+  const [customSelectedColumn, setCustomSelectedColumn] = useState<string>('');
+  const [customChartType, setCustomChartType] = useState<'line' | 'bar' | 'pie'>('bar');
+  const [isGeneratingCustomChart, setIsGeneratingCustomChart] = useState(false);
 
   useEffect(() => {
     if (isOpen && data.length > 0 && columns.length > 0) {
@@ -71,8 +74,8 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     const result = await analyzeData(data, columns, selectedRevenueColumn, selectedCategoryColumn);
     if (result) {
       setAnalysisResult(result);
-      // Check if we need column selection
-      if (result.charts.length === 0 && (columnTypes.numerical.length > 0 || columnTypes.categorical.length > 0)) {
+      // Always show column selection if we have columns
+      if (columnTypes.numerical.length > 0 || columnTypes.categorical.length > 0) {
         setShowColumnSelection(true);
       }
     }
@@ -104,8 +107,59 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     localStorage.removeItem('bi-selected-category-column');
     setSelectedRevenueColumn('');
     setSelectedCategoryColumn('');
-    setShowColumnSelection(false);
+    setCustomSelectedColumn('');
+    setCustomChartType('bar');
     performAnalysis();
+  };
+
+  const generateCustomChart = async () => {
+    if (!customSelectedColumn) return;
+    
+    setIsGeneratingCustomChart(true);
+    try {
+      // Create custom chart data based on selected column and type
+      const columnIndex = columns.indexOf(customSelectedColumn);
+      if (columnIndex === -1) return;
+      
+      const columnData = data.slice(1).map(row => row[columnIndex]).filter(val => val !== null && val !== undefined && val !== '');
+      
+      let chartData: any[] = [];
+      
+      if (customChartType === 'pie') {
+        // For pie charts, count occurrences of each unique value
+        const counts: { [key: string]: number } = {};
+        columnData.forEach(val => {
+          const key = String(val);
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        chartData = Object.entries(counts).map(([name, value]) => ({ name, value }));
+      } else {
+        // For line/bar charts, use value with index
+        chartData = columnData.map((value, index) => ({
+          name: `Point ${index + 1}`,
+          value: isNaN(Number(value)) ? 0 : Number(value)
+        }));
+      }
+      
+      const customChart = {
+        type: customChartType,
+        data: chartData,
+        title: `${customSelectedColumn} - ${customChartType.charAt(0).toUpperCase() + customChartType.slice(1)} Chart`,
+        xAxis: 'name',
+        yAxis: 'value'
+      };
+      
+      // Add to existing analysis result
+      if (analysisResult) {
+        setAnalysisResult({
+          ...analysisResult,
+          charts: [...analysisResult.charts.filter((c: any) => !c.title.includes('Custom:')), 
+                   { ...customChart, title: `Custom: ${customChart.title}` }]
+        });
+      }
+    } finally {
+      setIsGeneratingCustomChart(false);
+    }
   };
 
   const renderChart = (chart: any) => {
@@ -251,7 +305,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
           {!loading && analysisResult && (
             <>
               {/* Column Selection Interface */}
-              {(analysisResult.charts.length === 0 && showColumnSelection) && (
+              {showColumnSelection && (
                 <Card className="border-dashed border-2 border-primary/20">
                   <CardHeader>
                     <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -330,6 +384,70 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                         Reset
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Custom Visualization Section */}
+              {showColumnSelection && (
+                <Card className="border-2 border-dashed border-accent/30">
+                  <CardHeader>
+                    <CardTitle className="text-base font-medium flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      Custom Visualization
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Create custom charts by selecting any column and chart type
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <h4 className="font-medium">Select Column</h4>
+                        <Select value={customSelectedColumn} onValueChange={setCustomSelectedColumn}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose any column..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {columns.map((col) => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <h4 className="font-medium">Chart Type</h4>
+                        <Select value={customChartType} onValueChange={(value) => setCustomChartType(value as 'line' | 'bar' | 'pie')}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bar">Bar Chart</SelectItem>
+                            <SelectItem value="line">Line Chart</SelectItem>
+                            <SelectItem value="pie">Pie Chart</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      onClick={generateCustomChart}
+                      disabled={!customSelectedColumn || isGeneratingCustomChart}
+                      className="w-full"
+                    >
+                      {isGeneratingCustomChart ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating Chart...
+                        </>
+                      ) : (
+                        <>
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          Generate Custom Chart
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               )}

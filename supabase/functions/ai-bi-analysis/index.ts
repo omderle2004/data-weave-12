@@ -13,6 +13,7 @@ interface AnalysisRequest {
   columns: string[];
   selectedRevenueColumn?: string;
   selectedCategoryColumn?: string;
+  fullDatasetStats?: boolean;
 }
 
 interface ChartData {
@@ -51,7 +52,7 @@ serve(async (req) => {
 
   try {
     console.log('Starting BI analysis');
-    const { data, columns, selectedRevenueColumn, selectedCategoryColumn }: AnalysisRequest = await req.json();
+    const { data, columns, selectedRevenueColumn, selectedCategoryColumn, fullDatasetStats = true }: AnalysisRequest = await req.json();
 
     if (!data || !columns || data.length === 0) {
       throw new Error('Invalid data provided');

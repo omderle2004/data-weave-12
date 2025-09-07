@@ -2,13 +2,19 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Code, BarChart3, FileText, Image } from 'lucide-react';
+import { Bot, Code, BarChart3, FileText, Image, TrendingUp, Info } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface AIResponse {
   id: string;
   type: 'text' | 'code' | 'chart' | 'image';
   content: string;
   timestamp: Date;
+  chartData?: any[];
+  chartType?: string;
+  chartTitle?: string;
+  insights?: string[];
+  statistics?: any;
 }
 
 interface AIResponsePanelProps {
@@ -77,9 +83,92 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
                     </Badge>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm whitespace-pre-wrap break-words">
+                    <div className="text-sm whitespace-pre-wrap break-words mb-3">
                       {response.content}
                     </div>
+                    
+                    {/* Display insights if available */}
+                    {response.insights && response.insights.length > 0 && (
+                      <div className="mb-3">
+                        <div className="flex items-center gap-1 mb-2">
+                          <TrendingUp className="h-3 w-3 text-primary" />
+                          <span className="text-xs font-medium text-primary">Key Insights</span>
+                        </div>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          {response.insights.map((insight, idx) => (
+                            <li key={idx} className="flex items-start gap-1">
+                              <span className="text-primary">•</span>
+                              <span>{insight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Display chart if available */}
+                    {response.chartData && response.chartType && (
+                      <div className="mb-3">
+                        <div className="text-xs font-medium text-primary mb-2">{response.chartTitle}</div>
+                        <div className="h-64 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            {response.chartType === 'bar' ? (
+                              <BarChart data={response.chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                <YAxis tick={{ fontSize: 10 }} />
+                                <Tooltip />
+                                <Bar dataKey="value" fill="hsl(var(--primary))" />
+                              </BarChart>
+                            ) : response.chartType === 'line' ? (
+                              <LineChart data={response.chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                <YAxis tick={{ fontSize: 10 }} />
+                                <Tooltip />
+                                <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} />
+                              </LineChart>
+                            ) : response.chartType === 'pie' ? (
+                              <PieChart>
+                                <Pie
+                                  data={response.chartData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                  outerRadius={80}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {response.chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 50%)`} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            ) : null}
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Display statistics if available */}
+                    {response.statistics && (
+                      <div className="mb-3">
+                        <div className="flex items-center gap-1 mb-2">
+                          <Info className="h-3 w-3 text-primary" />
+                          <span className="text-xs font-medium text-primary">Statistics</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground grid grid-cols-2 gap-2">
+                          {Object.entries(response.statistics).map(([key, value]) => (
+                            <div key={key} className="flex justify-between">
+                              <span className="capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
+                              <span className="font-medium">{typeof value === 'number' ? value.toLocaleString() : String(value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="text-xs text-muted-foreground mt-2">
                       {response.timestamp.toLocaleTimeString()}
                     </div>

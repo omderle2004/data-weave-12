@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.ai-bi-analysis]
 verify_jwt = true
+
+[functions.ai-data-analysis]
+verify_jwt = false

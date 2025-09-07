@@ -5,12 +5,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send, Paperclip, Image, GripVertical } from 'lucide-react';
 import { VoiceInput } from './VoiceInput';
 import { AIResponsePanel } from './AIResponsePanel';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AIResponse {
   id: string;
   type: 'text' | 'code' | 'chart' | 'image';
   content: string;
   timestamp: Date;
+  chartData?: any[];
+  chartType?: string;
+  chartTitle?: string;
+  insights?: string[];
+  statistics?: any;
 }
 
 interface ResizableQuestionPanelProps {
@@ -18,13 +24,17 @@ interface ResizableQuestionPanelProps {
   setChatMessage: React.Dispatch<React.SetStateAction<string>>;
   onSendMessage: () => void;
   children: React.ReactNode;
+  data?: any[][];
+  columns?: string[];
 }
 
 export function ResizableQuestionPanel({ 
   chatMessage, 
   setChatMessage, 
   onSendMessage,
-  children 
+  children,
+  data = [],
+  columns = []
 }: ResizableQuestionPanelProps) {
   const [aiResponses, setAiResponses] = useState<AIResponse[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -40,23 +50,55 @@ export function ResizableQuestionPanel({
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!chatMessage.trim()) return;
     
     setIsAiLoading(true);
-    onSendMessage();
     
-    // Simulate AI response (replace with actual AI integration)
-    setTimeout(() => {
+    try {
+      // Call the AI data analysis function
+      const { data: result, error } = await supabase.functions.invoke('ai-data-analysis', {
+        body: {
+          question: chatMessage,
+          data: data,
+          columns: columns
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Create AI response based on the analysis result
       const newResponse: AIResponse = {
         id: Date.now().toString(),
+        type: result.chartData ? 'chart' : 'text',
+        content: result.answer,
+        timestamp: new Date(),
+        chartData: result.chartData,
+        chartType: result.chartRecommendation?.type,
+        chartTitle: result.chartRecommendation?.title,
+        insights: result.insights,
+        statistics: result.statistics
+      };
+
+      setAiResponses(prev => [...prev, newResponse]);
+      
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      const errorResponse: AIResponse = {
+        id: Date.now().toString(),
         type: 'text',
-        content: `I understand you're asking about: "${chatMessage}". This is a demo response. In a real implementation, this would be connected to an AI service.`,
+        content: 'I apologize, but I encountered an error while analyzing your data. Please try again.',
         timestamp: new Date()
       };
-      setAiResponses(prev => [...prev, newResponse]);
+      setAiResponses(prev => [...prev, errorResponse]);
+    } finally {
       setIsAiLoading(false);
-    }, 2000);
+    }
+
+    onSendMessage();
+    setChatMessage('');
   };
 
   return (

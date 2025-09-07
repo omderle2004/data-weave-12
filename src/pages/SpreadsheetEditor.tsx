@@ -642,6 +642,8 @@ export default function SpreadsheetEditor() {
             chatMessage={chatMessage}
             setChatMessage={setChatMessage}
             onSendMessage={handleSendMessage}
+            data={importedData || []}
+            columns={importedData && importedData.length > 0 ? importedData[0].map((header, index) => header?.toString() || `Column ${index + 1}`) : []}
           >
             {/* Spreadsheet Grid */}
             <div className="h-full overflow-auto relative bg-background">

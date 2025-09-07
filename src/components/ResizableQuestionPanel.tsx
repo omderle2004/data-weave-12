@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface AIResponse {
   id: string;
-  type: 'text' | 'code' | 'chart' | 'image';
+  type: 'text' | 'code' | 'chart' | 'image' | 'table';
   content: string;
   timestamp: Date;
   chartData?: any[];
@@ -17,6 +17,12 @@ interface AIResponse {
   chartTitle?: string;
   insights?: string[];
   statistics?: any;
+  tableData?: {
+    title: string;
+    columns: string[];
+    rows: string[][];
+  };
+  intent?: string;
 }
 
 interface ResizableQuestionPanelProps {
@@ -70,16 +76,20 @@ export function ResizableQuestionPanel({
       }
 
       // Create AI response based on the analysis result
+      const responseType = result.tableData ? 'table' : result.chartData ? 'chart' : 'text';
+      
       const newResponse: AIResponse = {
         id: Date.now().toString(),
-        type: result.chartData ? 'chart' : 'text',
+        type: responseType,
         content: result.answer,
         timestamp: new Date(),
         chartData: result.chartData,
         chartType: result.chartRecommendation?.type,
         chartTitle: result.chartRecommendation?.title,
         insights: result.insights,
-        statistics: result.statistics
+        statistics: result.statistics,
+        tableData: result.tableData,
+        intent: result.intent
       };
 
       setAiResponses(prev => [...prev, newResponse]);

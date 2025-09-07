@@ -7,7 +7,7 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 
 interface AIResponse {
   id: string;
-  type: 'text' | 'code' | 'chart' | 'image';
+  type: 'text' | 'code' | 'chart' | 'image' | 'table';
   content: string;
   timestamp: Date;
   chartData?: any[];
@@ -15,6 +15,12 @@ interface AIResponse {
   chartTitle?: string;
   insights?: string[];
   statistics?: any;
+  tableData?: {
+    title: string;
+    columns: string[];
+    rows: string[][];
+  };
+  intent?: string;
 }
 
 interface AIResponsePanelProps {
@@ -28,6 +34,7 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
       case 'code': return <Code className="h-4 w-4" />;
       case 'chart': return <BarChart3 className="h-4 w-4" />;
       case 'image': return <Image className="h-4 w-4" />;
+      case 'table': return <FileText className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
   };
@@ -37,6 +44,7 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
       case 'code': return 'bg-blue-500/10 text-blue-700 border-blue-200';
       case 'chart': return 'bg-green-500/10 text-green-700 border-green-200';
       case 'image': return 'bg-purple-500/10 text-purple-700 border-purple-200';
+      case 'table': return 'bg-orange-500/10 text-orange-700 border-orange-200';
       default: return 'bg-gray-500/10 text-gray-700 border-gray-200';
     }
   };
@@ -105,6 +113,39 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
                       </div>
                     )}
 
+                    {/* Display table if available */}
+                    {response.tableData && (
+                      <div className="mb-3">
+                        <div className="text-xs font-medium text-primary mb-2">{response.tableData.title}</div>
+                        <div className="border border-border rounded-md overflow-hidden">
+                          <div className="overflow-x-auto max-h-64">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-muted">
+                                  {response.tableData.columns.map((col, idx) => (
+                                    <th key={idx} className="px-2 py-1 text-left font-medium text-muted-foreground border-r border-border last:border-r-0">
+                                      {col}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {response.tableData.rows.map((row, rowIdx) => (
+                                  <tr key={rowIdx} className="border-t border-border hover:bg-muted/50">
+                                    {row.map((cell, cellIdx) => (
+                                      <td key={cellIdx} className="px-2 py-1 border-r border-border last:border-r-0">
+                                        {cell}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Display chart if available */}
                     {response.chartData && response.chartType && (
                       <div className="mb-3">
@@ -119,7 +160,7 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
                                 <Tooltip />
                                 <Bar dataKey="value" fill="hsl(var(--primary))" />
                               </BarChart>
-                            ) : response.chartType === 'line' ? (
+                            ) : response.chartType === 'line' || response.chartType === 'area' ? (
                               <LineChart data={response.chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />

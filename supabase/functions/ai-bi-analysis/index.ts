@@ -17,7 +17,7 @@ interface AnalysisRequest {
 }
 
 interface ChartData {
-  type: 'line' | 'bar' | 'pie';
+  type: 'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'radar' | 'donut' | 'stacked-bar';
   data: any[];
   title: string;
   xAxis?: string;

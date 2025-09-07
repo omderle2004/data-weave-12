@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, PieChart, TrendingUp, ArrowLeft, Database, Brain, FileText, Loader2, RefreshCw } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart } from 'recharts';
 import { useBIAnalysis } from '@/hooks/useBIAnalysis';
 
 interface BIDashboardModalProps {
@@ -26,7 +26,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
   const [columnTypes, setColumnTypes] = useState<{numerical: string[], categorical: string[]}>({numerical: [], categorical: []});
   const [isGeneratingCharts, setIsGeneratingCharts] = useState(false);
   const [customSelectedColumn, setCustomSelectedColumn] = useState<string>('');
-  const [customChartType, setCustomChartType] = useState<'line' | 'bar' | 'pie'>('bar');
+  const [customChartType, setCustomChartType] = useState<'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'radar' | 'donut' | 'stacked-bar'>('bar');
   const [isGeneratingCustomChart, setIsGeneratingCustomChart] = useState(false);
 
   useEffect(() => {
@@ -125,16 +125,30 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
       
       let chartData: any[] = [];
       
-      if (customChartType === 'pie') {
-        // For pie charts, count occurrences of each unique value
+      if (customChartType === 'pie' || customChartType === 'donut') {
+        // For pie/donut charts, count occurrences of each unique value
         const counts: { [key: string]: number } = {};
         columnData.forEach(val => {
           const key = String(val);
           counts[key] = (counts[key] || 0) + 1;
         });
         chartData = Object.entries(counts).map(([name, value]) => ({ name, value }));
+      } else if (customChartType === 'scatter') {
+        // For scatter plots, use index as x and value as y
+        chartData = columnData.map((value, index) => ({
+          x: index + 1,
+          y: isNaN(Number(value)) ? 0 : Number(value),
+          name: `Point ${index + 1}`
+        }));
+      } else if (customChartType === 'radar') {
+        // For radar charts, take first 6 data points
+        chartData = columnData.slice(0, 6).map((value, index) => ({
+          subject: `Metric ${index + 1}`,
+          value: isNaN(Number(value)) ? 0 : Number(value),
+          fullMark: Math.max(...columnData.map(v => isNaN(Number(v)) ? 0 : Number(v)))
+        }));
       } else {
-        // For line/bar charts, use value with index
+        // For line/bar/area charts, use value with index
         chartData = columnData.map((value, index) => ({
           name: `Point ${index + 1}`,
           value: isNaN(Number(value)) ? 0 : Number(value)
@@ -212,6 +226,75 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
               </Pie>
               <Tooltip />
             </RechartsPieChart>
+          </ResponsiveContainer>
+        );
+      case 'area':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <AreaChart data={chart.data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={chart.xAxis || 'name'} />
+              <YAxis />
+              <Tooltip />
+              <Area type="monotone" dataKey={chart.yAxis || 'value'} stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+            </AreaChart>
+          </ResponsiveContainer>
+        );
+      case 'scatter':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <ScatterChart data={chart.data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="x" />
+              <YAxis dataKey="y" />
+              <Tooltip />
+              <Scatter dataKey="y" fill="#8884d8" />
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+      case 'radar':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <RadarChart data={chart.data}>
+              <PolarGrid />
+              <PolarAngleAxis dataKey="subject" />
+              <PolarRadiusAxis />
+              <Radar name="Value" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+              <Tooltip />
+            </RadarChart>
+          </ResponsiveContainer>
+        );
+      case 'donut':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <RechartsPieChart>
+              <Pie
+                data={chart.data}
+                cx="50%"
+                cy="50%"
+                innerRadius={40}
+                outerRadius={80}
+                dataKey="value"
+                label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              >
+                {chart.data.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        );
+      case 'stacked-bar':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <ComposedChart data={chart.data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={chart.xAxis || 'name'} />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey={chart.yAxis || 'value'} stackId="a" fill="#8884d8" />
+            </ComposedChart>
           </ResponsiveContainer>
         );
       default:
@@ -418,7 +501,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                       
                       <div className="space-y-3">
                         <h4 className="font-medium">Chart Type</h4>
-                        <Select value={customChartType} onValueChange={(value) => setCustomChartType(value as 'line' | 'bar' | 'pie')}>
+                        <Select value={customChartType} onValueChange={(value) => setCustomChartType(value as any)}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -426,6 +509,11 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                             <SelectItem value="bar">Bar Chart</SelectItem>
                             <SelectItem value="line">Line Chart</SelectItem>
                             <SelectItem value="pie">Pie Chart</SelectItem>
+                            <SelectItem value="area">Area Chart</SelectItem>
+                            <SelectItem value="scatter">Scatter Plot</SelectItem>
+                            <SelectItem value="radar">Radar Chart</SelectItem>
+                            <SelectItem value="donut">Donut Chart</SelectItem>
+                            <SelectItem value="stacked-bar">Stacked Bar Chart</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

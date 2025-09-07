@@ -124,12 +124,11 @@ export function ResizableQuestionPanel({
         <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
       </PanelResizeHandle>
       
-      <Panel defaultSize={45} minSize={10} maxSize={90}>
+      <Panel defaultSize={45} minSize={10} maxSize={100}>
         <div className="h-full overflow-x-auto">
-          <PanelGroup direction="horizontal" className="h-full min-w-fit">
-            {/* Input Section - Default span A-E columns */}
-            <Panel defaultSize={35} minSize={20} maxSize={80}>
-            <div className="h-full bg-card border-t border-border flex flex-col">
+          <div className="flex h-full min-w-[1200px]">
+            {/* Input Section - Columns A-E (19% of total width) */}
+            <div className="w-[19%] min-w-[280px] h-full bg-card border-t border-border flex flex-col border-r">
               {/* Header */}
               <div className="p-3 lg:p-4 border-b border-border shrink-0">
                 <h3 className="font-semibold text-sm">Ask to SmartBiz AI</h3>
@@ -187,20 +186,15 @@ export function ResizableQuestionPanel({
                 </div>
               </div>
             </div>
-          </Panel>
-          
-          {/* Draggable Divider */}
-          <PanelResizeHandle className="w-2 bg-border hover:bg-primary/20 transition-colors cursor-col-resize flex items-center justify-center">
-            <GripVertical className="h-4 w-4 text-muted-foreground/50" />
-          </PanelResizeHandle>
-          
-          {/* Output Section - Right aligned with columns I-Z */}
-          <Panel defaultSize={65} minSize={20} maxSize={80}>
-            <div className="h-full border-t border-border">
+            
+            {/* Output Section - Columns F-P (42% of total width, fixed position) */}
+            <div className="w-[42%] min-w-[420px] h-full border-t border-border">
               <AIResponsePanel responses={aiResponses} isLoading={isAiLoading} />
             </div>
-          </Panel>
-          </PanelGroup>
+            
+            {/* Spacer for remaining columns Q-Z */}
+            <div className="flex-1 min-w-[200px]"></div>
+          </div>
         </div>
       </Panel>
     </PanelGroup>

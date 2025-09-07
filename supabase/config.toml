@@ -1,1 +1,7 @@
 project_id = "qydkezeghsmbyrbnvpmn"
+
+[functions.clean-data-with-ai]
+verify_jwt = true
+
+[functions.ai-bi-analysis]
+verify_jwt = true

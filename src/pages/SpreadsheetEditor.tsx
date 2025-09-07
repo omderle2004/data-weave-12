@@ -804,7 +804,9 @@ export default function SpreadsheetEditor() {
         onClose={() => {
           setShowBIDashboard(false);
           setActiveView('analyze');
-        }} 
+        }}
+        data={importedData || []}
+        columns={importedData && importedData.length > 0 ? importedData[0].map((_, index) => `Column ${index + 1}`) : []}
       />
 
       {/* Data Preprocessing Modal */}

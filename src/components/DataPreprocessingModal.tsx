@@ -301,25 +301,7 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
         
         <div className="flex-1 overflow-auto space-y-6">
           {/* Data Quality Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                   <div className="p-2 bg-red-100 rounded-lg">
-                     <XCircle className="h-5 w-5 text-red-600" />
-                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {hasData && analysisResults ? 
-                        (analysisResults.duplicateRows > 0 ? analysisResults.duplicateRows : 0) : 
-                        0}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Critical Issues</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -331,6 +313,38 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
                       {hasData && analysisResults ? analysisResults.missingValues : 0}
                     </p>
                     <p className="text-sm text-muted-foreground">Missing Values</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                   <div className="p-2 bg-red-100 rounded-lg">
+                     <XCircle className="h-5 w-5 text-red-600" />
+                   </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {hasData && analysisResults ? analysisResults.duplicateRows : 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Duplicate Records</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                   <div className="p-2 bg-yellow-100 rounded-lg">
+                     <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                   </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {hasData && analysisResults ? analysisResults.dataTypeIssues : 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Data Type Issues</p>
                   </div>
                 </div>
               </CardContent>

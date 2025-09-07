@@ -90,7 +90,7 @@ export default function Auth() {
             </div>
             <span className="text-2xl font-bold text-white">SmartBiz AI</span>
           </div>
-          <p className="text-gray-300">Welcome to the AI Business Intelligence Platform</p>
+          <p className="text-gray-300">AI Powered Data and BI Analysis</p>
         </div>
 
         {/* Auth Card */}

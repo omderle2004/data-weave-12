@@ -194,7 +194,7 @@ export default function Landing() {
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 text-center">
                 <MapPin className="h-8 w-8 text-purple-400 mx-auto mb-3" />
                 <h3 className="text-white font-semibold mb-2">Location</h3>
-                <p className="text-gray-400">Pune, India</p>
+                <p className="text-gray-400">Nashik, India</p>
               </div>
             </div>
           </div>

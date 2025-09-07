@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3, PieChart, TrendingUp, ArrowLeft, Database, Brain, FileText, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart3, PieChart, TrendingUp, ArrowLeft, Database, Brain, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useBIAnalysis } from '@/hooks/useBIAnalysis';
 
@@ -19,18 +20,92 @@ const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff88', '#f
 export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: BIDashboardModalProps) {
   const { analyzeData, loading, error } = useBIAnalysis();
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [selectedRevenueColumn, setSelectedRevenueColumn] = useState<string>('');
+  const [selectedCategoryColumn, setSelectedCategoryColumn] = useState<string>('');
+  const [showColumnSelection, setShowColumnSelection] = useState(false);
+  const [columnTypes, setColumnTypes] = useState<{numerical: string[], categorical: string[]}>({numerical: [], categorical: []});
+  const [isGeneratingCharts, setIsGeneratingCharts] = useState(false);
 
   useEffect(() => {
     if (isOpen && data.length > 0 && columns.length > 0) {
+      classifyColumns();
       performAnalysis();
     }
   }, [isOpen, data, columns]);
 
+  useEffect(() => {
+    // Load cached selections
+    const savedRevenue = localStorage.getItem('bi-selected-revenue-column');
+    const savedCategory = localStorage.getItem('bi-selected-category-column');
+    if (savedRevenue && columns.includes(savedRevenue)) {
+      setSelectedRevenueColumn(savedRevenue);
+    }
+    if (savedCategory && columns.includes(savedCategory)) {
+      setSelectedCategoryColumn(savedCategory);
+    }
+  }, [columns]);
+
+  const classifyColumns = () => {
+    if (data.length < 2) return;
+    
+    const numerical: string[] = [];
+    const categorical: string[] = [];
+    
+    columns.forEach((col, index) => {
+      const sampleValues = data.slice(1, Math.min(11, data.length)).map(row => row[index]);
+      const numericCount = sampleValues.filter(val => 
+        val !== null && val !== undefined && val !== '' && !isNaN(Number(val))
+      ).length;
+      
+      if (numericCount > sampleValues.length * 0.7) {
+        numerical.push(col);
+      } else {
+        categorical.push(col);
+      }
+    });
+    
+    setColumnTypes({ numerical, categorical });
+  };
+
   const performAnalysis = async () => {
-    const result = await analyzeData(data, columns);
+    const result = await analyzeData(data, columns, selectedRevenueColumn, selectedCategoryColumn);
     if (result) {
       setAnalysisResult(result);
+      // Check if we need column selection
+      if (result.charts.length === 0 && (columnTypes.numerical.length > 0 || columnTypes.categorical.length > 0)) {
+        setShowColumnSelection(true);
+      }
     }
+  };
+
+  const generateCustomCharts = async () => {
+    if (!selectedRevenueColumn && !selectedCategoryColumn) return;
+    
+    setIsGeneratingCharts(true);
+    try {
+      const result = await analyzeData(data, columns, selectedRevenueColumn, selectedCategoryColumn);
+      if (result) {
+        setAnalysisResult(result);
+        // Cache selections
+        if (selectedRevenueColumn) {
+          localStorage.setItem('bi-selected-revenue-column', selectedRevenueColumn);
+        }
+        if (selectedCategoryColumn) {
+          localStorage.setItem('bi-selected-category-column', selectedCategoryColumn);
+        }
+      }
+    } finally {
+      setIsGeneratingCharts(false);
+    }
+  };
+
+  const resetSelections = () => {
+    localStorage.removeItem('bi-selected-revenue-column');
+    localStorage.removeItem('bi-selected-category-column');
+    setSelectedRevenueColumn('');
+    setSelectedCategoryColumn('');
+    setShowColumnSelection(false);
+    performAnalysis();
   };
 
   const renderChart = (chart: any) => {
@@ -175,8 +250,92 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
 
           {!loading && analysisResult && (
             <>
-              {/* Loading state for charts when no data */}
-              {analysisResult.charts.length === 0 && (
+              {/* Column Selection Interface */}
+              {(analysisResult.charts.length === 0 && showColumnSelection) && (
+                <Card className="border-dashed border-2 border-primary/20">
+                  <CardHeader>
+                    <CardTitle className="text-base font-medium flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      Select Columns for Visualization
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Choose columns to generate dynamic charts and insights
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Revenue Column Selection */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4 text-blue-500" />
+                          <h4 className="font-medium">Revenue Trends</h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Select a numerical column to visualize as Revenue Trends
+                        </p>
+                        <Select value={selectedRevenueColumn} onValueChange={setSelectedRevenueColumn}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose numerical column..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {columnTypes.numerical.map((col) => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Category Column Selection */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <PieChart className="h-4 w-4 text-green-500" />
+                          <h4 className="font-medium">Market Share</h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Select a categorical column to visualize Market Share
+                        </p>
+                        <Select value={selectedCategoryColumn} onValueChange={setSelectedCategoryColumn}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose categorical column..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {columnTypes.categorical.map((col) => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button 
+                        onClick={generateCustomCharts}
+                        disabled={!selectedRevenueColumn && !selectedCategoryColumn || isGeneratingCharts}
+                        className="flex-1"
+                      >
+                        {isGeneratingCharts ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Generating Charts...
+                          </>
+                        ) : (
+                          <>
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Generate Visualizations
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="outline" onClick={resetSelections}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* No data available placeholder */}
+              {analysisResult.charts.length === 0 && !showColumnSelection && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card>
                     <CardHeader>
@@ -186,8 +345,8 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                       <div className="h-48 bg-muted/30 rounded-lg flex items-center justify-center">
                         <div className="text-center text-muted-foreground">
                           <BarChart3 className="h-12 w-12 mx-auto mb-2" />
-                          <p>No revenue data detected</p>
-                          <p className="text-sm">Add revenue/sales columns for trends</p>
+                          <p>No numerical data detected</p>
+                          <p className="text-sm">Upload data with numerical columns</p>
                         </div>
                       </div>
                     </CardContent>
@@ -201,7 +360,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                         <div className="text-center text-muted-foreground">
                           <PieChart className="h-12 w-12 mx-auto mb-2" />
                           <p>No categorical data detected</p>
-                          <p className="text-sm">Add category columns for breakdown</p>
+                          <p className="text-sm">Upload data with text/category columns</p>
                         </div>
                       </div>
                     </CardContent>

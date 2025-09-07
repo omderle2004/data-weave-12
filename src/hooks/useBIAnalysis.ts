@@ -33,13 +33,13 @@ export function useBIAnalysis() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const analyzeData = async (data: any[][], columns: string[]): Promise<BIAnalysisResult | null> => {
+  const analyzeData = async (data: any[][], columns: string[], selectedRevenueColumn?: string, selectedCategoryColumn?: string): Promise<BIAnalysisResult | null> => {
     setLoading(true);
     setError(null);
 
     try {
       const { data: result, error: fnError } = await supabase.functions.invoke('ai-bi-analysis', {
-        body: { data, columns }
+        body: { data, columns, selectedRevenueColumn, selectedCategoryColumn }
       });
 
       if (fnError) {

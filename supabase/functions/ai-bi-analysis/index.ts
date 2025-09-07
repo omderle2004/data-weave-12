@@ -11,6 +11,8 @@ const corsHeaders = {
 interface AnalysisRequest {
   data: any[][];
   columns: string[];
+  selectedRevenueColumn?: string;
+  selectedCategoryColumn?: string;
 }
 
 interface ChartData {
@@ -49,7 +51,7 @@ serve(async (req) => {
 
   try {
     console.log('Starting BI analysis');
-    const { data, columns }: AnalysisRequest = await req.json();
+    const { data, columns, selectedRevenueColumn, selectedCategoryColumn }: AnalysisRequest = await req.json();
 
     if (!data || !columns || data.length === 0) {
       throw new Error('Invalid data provided');
@@ -58,10 +60,10 @@ serve(async (req) => {
     console.log(`Analyzing data with ${data.length} rows and ${columns.length} columns`);
 
     // Perform statistical analysis
-    const statistics = calculateStatistics(data, columns);
+    const statistics = calculateStatistics(data, columns, selectedRevenueColumn);
     
     // Generate charts data
-    const charts = generateCharts(data, columns);
+    const charts = generateCharts(data, columns, selectedRevenueColumn, selectedCategoryColumn);
     
     // Calculate data quality score
     const qualityScore = calculateQualityScore(data);
@@ -89,19 +91,26 @@ serve(async (req) => {
   }
 });
 
-function calculateStatistics(data: any[][], columns: string[]) {
-  const numericColumns = findNumericColumns(data, columns);
+function calculateStatistics(data: any[][], columns: string[], selectedRevenueColumn?: string) {
+  let targetColumnIndex = -1;
   
-  if (numericColumns.length === 0) {
+  // Use selected column if provided, otherwise find first numeric column
+  if (selectedRevenueColumn) {
+    targetColumnIndex = columns.indexOf(selectedRevenueColumn);
+  } else {
+    const numericColumns = findNumericColumns(data, columns);
+    if (numericColumns.length > 0) {
+      targetColumnIndex = numericColumns[0].index;
+    }
+  }
+  
+  if (targetColumnIndex === -1) {
     return {
-      totalRecords: data.length
+      totalRecords: data.length - 1
     };
   }
 
-  // Use first numeric column for calculations
-  const values = data
-    .map(row => parseFloat(row[numericColumns[0].index]))
-    .filter(val => !isNaN(val));
+  const values = data.slice(1).map(row => parseFloat(row[targetColumnIndex])).filter(val => !isNaN(val));
 
   if (values.length === 0) {
     return {
@@ -142,48 +151,63 @@ function findNumericColumns(data: any[][], columns: string[]) {
   }).filter(col => col.isNumeric);
 }
 
-function generateCharts(data: any[][], columns: string[]): ChartData[] {
+function generateCharts(data: any[][], columns: string[], selectedRevenueColumn?: string, selectedCategoryColumn?: string): ChartData[] {
   const charts: ChartData[] = [];
-  const numericColumns = findNumericColumns(data, columns);
+
+  // Generate revenue trends chart
+  let revenueIndex = -1;
+  if (selectedRevenueColumn) {
+    revenueIndex = columns.indexOf(selectedRevenueColumn);
+  } else {
+    revenueIndex = findColumnByKeywords(columns, ['revenue', 'sales', 'income', 'earnings', 'profit']);
+  }
   
-  // Revenue/Sales trend chart
-  const revenueCol = findColumnByKeywords(columns, ['revenue', 'sales', 'amount', 'total', 'price']);
-  const dateCol = findColumnByKeywords(columns, ['date', 'time', 'month', 'year', 'period']);
-  
-  if (revenueCol !== -1 && dateCol !== -1) {
-    const trendData = data.slice(0, 20).map((row, index) => ({
-      name: row[dateCol] || `Period ${index + 1}`,
-      value: parseFloat(row[revenueCol]) || 0
+  if (revenueIndex !== -1) {
+    const chartData = data.slice(1).map((row, index) => ({
+      name: `Period ${index + 1}`,
+      value: parseFloat(row[revenueIndex]) || 0
     }));
     
     charts.push({
       type: 'line',
-      title: 'Revenue Trends',
-      data: trendData,
+      data: chartData,
+      title: selectedRevenueColumn ? `${selectedRevenueColumn} Trends` : 'Revenue Trends',
       xAxis: 'name',
       yAxis: 'value'
     });
   }
 
-  // Market share pie chart (categorical breakdown)
-  const categoryCol = findColumnByKeywords(columns, ['category', 'type', 'product', 'region', 'segment']);
-  if (categoryCol !== -1 && revenueCol !== -1) {
-    const categoryData = new Map();
-    data.forEach(row => {
-      const category = row[categoryCol] || 'Unknown';
-      const value = parseFloat(row[revenueCol]) || 0;
-      categoryData.set(category, (categoryData.get(category) || 0) + value);
+  // Generate market share chart
+  let categoryIndex = -1;
+  if (selectedCategoryColumn) {
+    categoryIndex = columns.indexOf(selectedCategoryColumn);
+  } else {
+    categoryIndex = findColumnByKeywords(columns, ['category', 'type', 'product', 'segment', 'region']);
+  }
+  
+  if (categoryIndex !== -1) {
+    const categoryCount: Record<string, number> = {};
+    data.slice(1).forEach(row => {
+      const category = row[categoryIndex];
+      if (category && category.toString().trim()) {
+        categoryCount[category] = (categoryCount[category] || 0) + 1;
+      }
     });
-    
-    const pieData = Array.from(categoryData.entries())
-      .slice(0, 8)
-      .map(([name, value]) => ({ name, value }));
-    
-    charts.push({
-      type: 'pie',
-      title: 'Market Share',
-      data: pieData
-    });
+
+    const chartData = Object.entries(categoryCount).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    if (chartData.length > 0) {
+      charts.push({
+        type: 'pie',
+        data: chartData,
+        title: selectedCategoryColumn ? `${selectedCategoryColumn} Distribution` : 'Market Share',
+        xAxis: 'name',
+        yAxis: 'value'
+      });
+    }
   }
 
   return charts;

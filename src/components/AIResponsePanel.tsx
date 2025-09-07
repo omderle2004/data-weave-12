@@ -55,7 +55,7 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
-          <h3 className="font-semibold text-sm">AI Response</h3>
+          <h3 className="font-semibold text-sm">SmartBiz Output – Your Virtual Analyst</h3>
           {isLoading && (
             <div className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
@@ -118,30 +118,32 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
                       <div className="mb-3">
                         <div className="text-xs font-medium text-primary mb-2">{response.tableData.title}</div>
                         <div className="border border-border rounded-md overflow-hidden">
-                          <div className="overflow-x-auto max-h-64">
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="bg-muted">
-                                  {response.tableData.columns.map((col, idx) => (
-                                    <th key={idx} className="px-2 py-1 text-left font-medium text-muted-foreground border-r border-border last:border-r-0">
-                                      {col}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {response.tableData.rows.map((row, rowIdx) => (
-                                  <tr key={rowIdx} className="border-t border-border hover:bg-muted/50">
-                                    {row.map((cell, cellIdx) => (
-                                      <td key={cellIdx} className="px-2 py-1 border-r border-border last:border-r-0">
-                                        {cell}
-                                      </td>
+                          <ScrollArea className="max-h-64">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="bg-muted">
+                                    {response.tableData.columns.map((col, idx) => (
+                                      <th key={idx} className="px-2 py-1 text-left font-medium text-muted-foreground border-r border-border last:border-r-0 whitespace-nowrap">
+                                        {col}
+                                      </th>
                                     ))}
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                                </thead>
+                                <tbody>
+                                  {response.tableData.rows.map((row, rowIdx) => (
+                                    <tr key={rowIdx} className="border-t border-border hover:bg-muted/50">
+                                      {row.map((cell, cellIdx) => (
+                                        <td key={cellIdx} className="px-2 py-1 border-r border-border last:border-r-0 whitespace-nowrap">
+                                          {cell}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </ScrollArea>
                         </div>
                       </div>
                     )}
@@ -150,45 +152,86 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
                     {response.chartData && response.chartType && (
                       <div className="mb-3">
                         <div className="text-xs font-medium text-primary mb-2">{response.chartTitle}</div>
-                        <div className="h-64 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            {response.chartType === 'bar' ? (
-                              <BarChart data={response.chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                <YAxis tick={{ fontSize: 10 }} />
-                                <Tooltip />
-                                <Bar dataKey="value" fill="hsl(var(--primary))" />
-                              </BarChart>
-                            ) : response.chartType === 'line' || response.chartType === 'area' ? (
-                              <LineChart data={response.chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                <YAxis tick={{ fontSize: 10 }} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} />
-                              </LineChart>
-                            ) : response.chartType === 'pie' ? (
-                              <PieChart>
-                                <Pie
-                                  data={response.chartData}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                  outerRadius={80}
-                                  fill="#8884d8"
-                                  dataKey="value"
-                                >
-                                  {response.chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 50%)`} />
-                                  ))}
-                                </Pie>
-                                <Tooltip />
-                              </PieChart>
-                            ) : null}
-                          </ResponsiveContainer>
-                        </div>
+                        <ScrollArea className="h-64 w-full">
+                          <div className="min-w-full h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              {response.chartType === 'bar' ? (
+                                <BarChart data={response.chartData}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
+                                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                  <YAxis tick={{ fontSize: 10 }} />
+                                  <Tooltip 
+                                    contentStyle={{ 
+                                      backgroundColor: 'hsl(var(--card))', 
+                                      border: '1px solid hsl(var(--border))',
+                                      borderRadius: '6px'
+                                    }} 
+                                  />
+                                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                                </BarChart>
+                              ) : response.chartType === 'line' || response.chartType === 'area' ? (
+                                <LineChart data={response.chartData}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
+                                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                  <YAxis tick={{ fontSize: 10 }} />
+                                  <Tooltip 
+                                    contentStyle={{ 
+                                      backgroundColor: 'hsl(var(--card))', 
+                                      border: '1px solid hsl(var(--border))',
+                                      borderRadius: '6px'
+                                    }} 
+                                  />
+                                  <Line 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke="hsl(var(--primary))" 
+                                    strokeWidth={3}
+                                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                                    activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                                  />
+                                </LineChart>
+                              ) : response.chartType === 'pie' ? (
+                                <PieChart>
+                                  <Pie
+                                    data={response.chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    outerRadius={80}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                    stroke="hsl(var(--background))"
+                                    strokeWidth={2}
+                                  >
+                                    {response.chartData.map((entry, index) => {
+                                      const colors = [
+                                        'hsl(var(--primary))',
+                                        'hsl(220, 70%, 50%)',
+                                        'hsl(142, 76%, 36%)',
+                                        'hsl(25, 95%, 53%)',
+                                        'hsl(271, 81%, 56%)',
+                                        'hsl(347, 77%, 50%)',
+                                        'hsl(43, 96%, 56%)',
+                                        'hsl(197, 71%, 52%)'
+                                      ];
+                                      return (
+                                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                      );
+                                    })}
+                                  </Pie>
+                                  <Tooltip 
+                                    contentStyle={{ 
+                                      backgroundColor: 'hsl(var(--card))', 
+                                      border: '1px solid hsl(var(--border))',
+                                      borderRadius: '6px'
+                                    }} 
+                                  />
+                                </PieChart>
+                              ) : null}
+                            </ResponsiveContainer>
+                          </div>
+                        </ScrollArea>
                       </div>
                     )}
 

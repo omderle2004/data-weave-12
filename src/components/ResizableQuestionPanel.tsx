@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Paperclip, Image, GripVertical } from 'lucide-react';
 import { VoiceInput } from './VoiceInput';
 import { AIResponsePanel } from './AIResponsePanel';
@@ -130,7 +131,7 @@ export function ResizableQuestionPanel({
             <div className="h-full bg-card border-t border-border flex flex-col">
               {/* Header */}
               <div className="p-3 lg:p-4 border-b border-border shrink-0">
-                <h3 className="font-semibold text-sm">Ask Me a Question</h3>
+                <h3 className="font-semibold text-sm">Ask to SmartBiz AI</h3>
                 <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
                   Get help with your spreadsheet, analyze data, or ask questions about your content
                 </p>
@@ -139,13 +140,15 @@ export function ResizableQuestionPanel({
               {/* Content Area */}
               <div className="flex-1 p-3 lg:p-4 flex flex-col min-h-0">
                 <div className="flex-1 mb-3 lg:mb-4 min-h-0">
-                  <Textarea
-                    placeholder="What would you like to know about your data? You can type here or use the voice button to speak your question..."
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="min-h-[60px] lg:min-h-[80px] resize-none text-sm h-full"
-                  />
+                  <ScrollArea className="h-full">
+                    <Textarea
+                      placeholder="What would you like to know about your data? You can type here or use the voice button to speak your question..."
+                      value={chatMessage}
+                      onChange={(e) => setChatMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="min-h-[60px] lg:min-h-[80px] resize-none text-sm h-full"
+                    />
+                  </ScrollArea>
                 </div>
 
                 {/* Action Buttons */}

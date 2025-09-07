@@ -806,7 +806,7 @@ export default function SpreadsheetEditor() {
           setActiveView('analyze');
         }}
         data={importedData || []}
-        columns={importedData && importedData.length > 0 ? importedData[0].map((_, index) => `Column ${index + 1}`) : []}
+        columns={importedData && importedData.length > 0 ? importedData[0].map((header, index) => header?.toString() || `Column ${index + 1}`) : []}
       />
 
       {/* Data Preprocessing Modal */}

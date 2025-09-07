@@ -88,7 +88,7 @@ export default function Auth() {
             <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <Database className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">DataSpace</span>
+            <span className="text-2xl font-bold text-white">SmartBiz AI</span>
           </div>
           <p className="text-gray-300">Welcome to the AI Business Intelligence Platform</p>
         </div>

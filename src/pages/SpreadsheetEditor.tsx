@@ -186,7 +186,7 @@ export default function SpreadsheetEditor() {
   const handleSendMessage = () => {
     if (!chatMessage.trim()) return;
     
-    toast.success('SmartBiz Response successfully');
+    toast.success('Message sent! (This is a demo - no AI response yet)');
     setChatMessage('');
   };
 

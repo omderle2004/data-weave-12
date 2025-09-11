@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart3, PieChart, TrendingUp, ArrowLeft, Database, Brain, FileText, Loader2, RefreshCw } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, ArrowLeft, Database, Brain, FileText, Loader2, RefreshCw, Download } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart } from 'recharts';
 import { useBIAnalysis } from '@/hooks/useBIAnalysis';
 
@@ -25,7 +25,8 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
   const [showColumnSelection, setShowColumnSelection] = useState(false);
   const [columnTypes, setColumnTypes] = useState<{numerical: string[], categorical: string[]}>({numerical: [], categorical: []});
   const [isGeneratingCharts, setIsGeneratingCharts] = useState(false);
-  const [customSelectedColumn, setCustomSelectedColumn] = useState<string>('');
+  const [customSelectedColumnX, setCustomSelectedColumnX] = useState<string>('');
+  const [customSelectedColumnY, setCustomSelectedColumnY] = useState<string>('');
   const [customChartType, setCustomChartType] = useState<'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'radar' | 'donut' | 'stacked-bar'>('bar');
   const [isGeneratingCustomChart, setIsGeneratingCustomChart] = useState(false);
 
@@ -107,58 +108,109 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     localStorage.removeItem('bi-selected-category-column');
     setSelectedRevenueColumn('');
     setSelectedCategoryColumn('');
-    setCustomSelectedColumn('');
+    setCustomSelectedColumnX('');
+    setCustomSelectedColumnY('');
     setCustomChartType('bar');
     performAnalysis();
   };
 
   const generateCustomChart = async () => {
-    if (!customSelectedColumn) return;
+    // Support both single and bi-variate analysis
+    if (!customSelectedColumnX && !customSelectedColumnY) return;
     
     setIsGeneratingCustomChart(true);
     try {
-      // Create custom chart data based on selected column and type
-      const columnIndex = columns.indexOf(customSelectedColumn);
-      if (columnIndex === -1) return;
-      
-      const columnData = data.slice(1).map(row => row[columnIndex]).filter(val => val !== null && val !== undefined && val !== '');
-      
       let chartData: any[] = [];
+      let chartTitle = '';
       
-      if (customChartType === 'pie' || customChartType === 'donut') {
-        // For pie/donut charts, count occurrences of each unique value
-        const counts: { [key: string]: number } = {};
-        columnData.forEach(val => {
-          const key = String(val);
-          counts[key] = (counts[key] || 0) + 1;
-        });
-        chartData = Object.entries(counts).map(([name, value]) => ({ name, value }));
-      } else if (customChartType === 'scatter') {
-        // For scatter plots, use index as x and value as y
-        chartData = columnData.map((value, index) => ({
-          x: index + 1,
-          y: isNaN(Number(value)) ? 0 : Number(value),
-          name: `Point ${index + 1}`
-        }));
-      } else if (customChartType === 'radar') {
-        // For radar charts, take first 6 data points
-        chartData = columnData.slice(0, 6).map((value, index) => ({
-          subject: `Metric ${index + 1}`,
-          value: isNaN(Number(value)) ? 0 : Number(value),
-          fullMark: Math.max(...columnData.map(v => isNaN(Number(v)) ? 0 : Number(v)))
-        }));
+      if (customSelectedColumnX && customSelectedColumnY) {
+        // Bi-variate analysis
+        const columnIndexX = columns.indexOf(customSelectedColumnX);
+        const columnIndexY = columns.indexOf(customSelectedColumnY);
+        if (columnIndexX === -1 || columnIndexY === -1) return;
+        
+        const combinedData = data.slice(1).map(row => ({
+          x: row[columnIndexX],
+          y: row[columnIndexY],
+          name: `${row[columnIndexX]}`
+        })).filter(item => 
+          item.x !== null && item.x !== undefined && item.x !== '' &&
+          item.y !== null && item.y !== undefined && item.y !== ''
+        );
+        
+        if (customChartType === 'pie' || customChartType === 'donut') {
+          // Group by X-axis values and sum Y-axis values
+          const grouped: { [key: string]: number } = {};
+          combinedData.forEach(item => {
+            const key = String(item.x);
+            const value = isNaN(Number(item.y)) ? 0 : Number(item.y);
+            grouped[key] = (grouped[key] || 0) + value;
+          });
+          chartData = Object.entries(grouped).map(([name, value]) => ({ name, value }));
+        } else if (customChartType === 'scatter') {
+          chartData = combinedData.map((item, index) => ({
+            x: isNaN(Number(item.x)) ? index : Number(item.x),
+            y: isNaN(Number(item.y)) ? 0 : Number(item.y),
+            name: String(item.x)
+          }));
+        } else {
+          // For other chart types, group by X and aggregate Y
+          const grouped: { [key: string]: number[] } = {};
+          combinedData.forEach(item => {
+            const key = String(item.x);
+            const value = isNaN(Number(item.y)) ? 0 : Number(item.y);
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(value);
+          });
+          
+          chartData = Object.entries(grouped).map(([name, values]) => ({
+            name,
+            value: values.reduce((sum, val) => sum + val, 0) / values.length // Average
+          }));
+        }
+        
+        chartTitle = `${customSelectedColumnY} vs ${customSelectedColumnX}`;
       } else {
-        // For line/bar/area charts, use value with index
-        chartData = columnData.map((value, index) => ({
-          name: `Point ${index + 1}`,
-          value: isNaN(Number(value)) ? 0 : Number(value)
-        }));
+        // Single column analysis (backward compatibility)
+        const selectedColumn = customSelectedColumnX || customSelectedColumnY;
+        const columnIndex = columns.indexOf(selectedColumn);
+        if (columnIndex === -1) return;
+        
+        const columnData = data.slice(1).map(row => row[columnIndex]).filter(val => val !== null && val !== undefined && val !== '');
+        
+        if (customChartType === 'pie' || customChartType === 'donut') {
+          const counts: { [key: string]: number } = {};
+          columnData.forEach(val => {
+            const key = String(val);
+            counts[key] = (counts[key] || 0) + 1;
+          });
+          chartData = Object.entries(counts).map(([name, value]) => ({ name, value }));
+        } else if (customChartType === 'scatter') {
+          chartData = columnData.map((value, index) => ({
+            x: index + 1,
+            y: isNaN(Number(value)) ? 0 : Number(value),
+            name: `Point ${index + 1}`
+          }));
+        } else if (customChartType === 'radar') {
+          chartData = columnData.slice(0, 6).map((value, index) => ({
+            subject: `Metric ${index + 1}`,
+            value: isNaN(Number(value)) ? 0 : Number(value),
+            fullMark: Math.max(...columnData.map(v => isNaN(Number(v)) ? 0 : Number(v)))
+          }));
+        } else {
+          chartData = columnData.map((value, index) => ({
+            name: `Point ${index + 1}`,
+            value: isNaN(Number(value)) ? 0 : Number(value)
+          }));
+        }
+        
+        chartTitle = `${selectedColumn}`;
       }
       
       const customChart = {
         type: customChartType,
         data: chartData,
-        title: `${customSelectedColumn} - ${customChartType.charAt(0).toUpperCase() + customChartType.slice(1)} Chart`,
+        title: `${chartTitle} - ${customChartType.charAt(0).toUpperCase() + customChartType.slice(1)} Chart`,
         xAxis: 'name',
         yAxis: 'value'
       };
@@ -311,20 +363,68 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     }
   };
 
+  const exportBIReport = () => {
+    if (!analysisResult) return;
+    
+    // Create a comprehensive report object
+    const report = {
+      title: 'SmartBiz AI - BI Analysis Report',
+      generatedAt: new Date().toISOString(),
+      datasetInfo: {
+        totalRecords: analysisResult.statistics?.totalRecords || data.length - 1,
+        totalColumns: columns.length,
+        columns: columns
+      },
+      statistics: analysisResult.statistics,
+      qualityScore: analysisResult.qualityScore,
+      insights: analysisResult.insights,
+      charts: analysisResult.charts.map((chart: any) => ({
+        title: chart.title,
+        type: chart.type,
+        dataPoints: chart.data?.length || 0
+      }))
+    };
+    
+    // Create and download JSON file
+    const dataStr = JSON.stringify(report, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `smartbiz-ai-report-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <DialogTitle className="text-xl font-semibold">BI Dashboard</DialogTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            className="h-8"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Spreadsheet
-          </Button>
+          <div className="flex items-center gap-2">
+            {analysisResult && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportBIReport}
+                className="h-8"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export BI Report
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="h-8"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Spreadsheet
+            </Button>
+          </div>
         </DialogHeader>
         
         <div className="flex-1 overflow-auto space-y-6">
@@ -479,51 +579,65 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                       <BarChart3 className="h-4 w-4" />
                       Custom Visualization
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Create custom charts by selecting any column and chart type
-                    </p>
+                     <p className="text-sm text-muted-foreground">
+                       Create custom charts by selecting columns for bi-variate analysis (e.g., Revenue vs Region, Sales vs Month)
+                     </p>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <h4 className="font-medium">Select Column</h4>
-                        <Select value={customSelectedColumn} onValueChange={setCustomSelectedColumn}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose any column..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {columns.map((col) => (
-                              <SelectItem key={col} value={col}>{col}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <h4 className="font-medium">Chart Type</h4>
-                        <Select value={customChartType} onValueChange={(value) => setCustomChartType(value as any)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="bar">Bar Chart</SelectItem>
-                            <SelectItem value="line">Line Chart</SelectItem>
-                            <SelectItem value="pie">Pie Chart</SelectItem>
-                            <SelectItem value="area">Area Chart</SelectItem>
-                            <SelectItem value="scatter">Scatter Plot</SelectItem>
-                            <SelectItem value="radar">Radar Chart</SelectItem>
-                            <SelectItem value="donut">Donut Chart</SelectItem>
-                            <SelectItem value="stacked-bar">Stacked Bar Chart</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      onClick={generateCustomChart}
-                      disabled={!customSelectedColumn || isGeneratingCustomChart}
-                      className="w-full"
-                    >
+                   <CardContent className="space-y-6">
+                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                       <div className="space-y-3">
+                         <h4 className="font-medium">Column 1 (X-Axis / Grouping)</h4>
+                         <Select value={customSelectedColumnX} onValueChange={setCustomSelectedColumnX}>
+                           <SelectTrigger>
+                             <SelectValue placeholder="Choose X-axis column..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {columns.map((col) => (
+                               <SelectItem key={col} value={col}>{col}</SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
+
+                       <div className="space-y-3">
+                         <h4 className="font-medium">Column 2 (Y-Axis / Metric)</h4>
+                         <Select value={customSelectedColumnY} onValueChange={setCustomSelectedColumnY}>
+                           <SelectTrigger>
+                             <SelectValue placeholder="Choose Y-axis column..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {columns.map((col) => (
+                               <SelectItem key={col} value={col}>{col}</SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
+                       
+                       <div className="space-y-3">
+                         <h4 className="font-medium">Chart Type</h4>
+                         <Select value={customChartType} onValueChange={(value) => setCustomChartType(value as any)}>
+                           <SelectTrigger>
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="bar">Bar Chart</SelectItem>
+                             <SelectItem value="line">Line Chart</SelectItem>
+                             <SelectItem value="pie">Pie Chart</SelectItem>
+                             <SelectItem value="area">Area Chart</SelectItem>
+                             <SelectItem value="scatter">Scatter Plot</SelectItem>
+                             <SelectItem value="radar">Radar Chart</SelectItem>
+                             <SelectItem value="donut">Donut Chart</SelectItem>
+                             <SelectItem value="stacked-bar">Stacked Bar Chart</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                     </div>
+                     
+                     <Button 
+                       onClick={generateCustomChart}
+                       disabled={(!customSelectedColumnX && !customSelectedColumnY) || isGeneratingCustomChart}
+                       className="w-full"
+                     >
                       {isGeneratingCustomChart ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />

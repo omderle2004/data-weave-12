@@ -26,7 +26,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
   const [selectedRevenueColumn, setSelectedRevenueColumn] = useState<string>('');
   const [selectedCategoryColumn, setSelectedCategoryColumn] = useState<string>('');
   const [showColumnSelection, setShowColumnSelection] = useState(false);
-  const [columnTypes, setColumnTypes] = useState<{numerical: string[], categorical: string[]}>({numerical: [], categorical: []});
+  const [columnTypes, setColumnTypes] = useState<{numerical: string[], categorical: string[], dateTime: string[]}>({numerical: [], categorical: [], dateTime: []});
   const [isGeneratingCharts, setIsGeneratingCharts] = useState(false);
   const [customSelectedColumnX, setCustomSelectedColumnX] = useState<string>('');
   const [customSelectedColumnY, setCustomSelectedColumnY] = useState<string>('');
@@ -38,6 +38,12 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
   const [predictiveYColumn, setPredictiveYColumn] = useState<string>('');
   const [isGeneratingPrediction, setIsGeneratingPrediction] = useState(false);
   const [predictionResult, setPredictionResult] = useState<any>(null);
+  
+  // Time Series Analysis states
+  const [timeSeriesDateColumn, setTimeSeriesDateColumn] = useState<string>('');
+  const [timeSeriesValueColumn, setTimeSeriesValueColumn] = useState<string>('');
+  const [isGeneratingTimeSeries, setIsGeneratingTimeSeries] = useState(false);
+  const [timeSeriesResult, setTimeSeriesResult] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen && data.length > 0 && columns.length > 0) {
@@ -63,6 +69,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     
     const numerical: string[] = [];
     const categorical: string[] = [];
+    const dateTime: string[] = [];
     
     columns.forEach((col, index) => {
       const sampleValues = data.slice(1, Math.min(11, data.length)).map(row => row[index]);
@@ -70,14 +77,29 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
         val !== null && val !== undefined && val !== '' && !isNaN(Number(val))
       ).length;
       
-      if (numericCount > sampleValues.length * 0.7) {
+      // Check for date/time patterns
+      const dateCount = sampleValues.filter(val => {
+        if (!val || typeof val !== 'string') return false;
+        const datePatterns = [
+          /^\d{4}-\d{2}-\d{2}/, // YYYY-MM-DD
+          /^\d{2}\/\d{2}\/\d{4}/, // MM/DD/YYYY
+          /^\d{2}-\d{2}-\d{4}/, // MM-DD-YYYY
+          /^\d{4}\/\d{2}\/\d{2}/, // YYYY/MM/DD
+          /^\d{1,2}\/\d{1,2}\/\d{2,4}/, // M/D/YY or MM/DD/YYYY
+        ];
+        return datePatterns.some(pattern => pattern.test(val)) || !isNaN(Date.parse(val));
+      }).length;
+      
+      if (dateCount > sampleValues.length * 0.7) {
+        dateTime.push(col);
+      } else if (numericCount > sampleValues.length * 0.7) {
         numerical.push(col);
       } else {
         categorical.push(col);
       }
     });
     
-    setColumnTypes({ numerical, categorical });
+    setColumnTypes({ numerical, categorical, dateTime });
   };
 
   const performAnalysis = async () => {
@@ -123,6 +145,9 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     setPredictiveXColumn('');
     setPredictiveYColumn('');
     setPredictionResult(null);
+    setTimeSeriesDateColumn('');
+    setTimeSeriesValueColumn('');
+    setTimeSeriesResult(null);
     performAnalysis();
   };
 
@@ -362,6 +387,220 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
       
     } finally {
       setIsGeneratingPrediction(false);
+    }
+  };
+
+  // Time Series Analysis Functions
+  const parseDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    
+    // Try various date formats
+    const formats = [
+      // Standard ISO format
+      () => new Date(dateStr),
+      // MM/DD/YYYY
+      () => {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        return null;
+      },
+      // DD/MM/YYYY (if month > 12)
+      () => {
+        const parts = dateStr.split('/');
+        if (parts.length === 3 && parseInt(parts[0]) > 12) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        return null;
+      },
+      // MM-DD-YYYY
+      () => {
+        const parts = dateStr.split('-');
+        if (parts.length === 3 && parts[0].length <= 2) return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        return null;
+      }
+    ];
+    
+    for (const format of formats) {
+      try {
+        const date = format();
+        if (date && !isNaN(date.getTime())) return date;
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    return null;
+  };
+
+  const calculateMovingAverage = (values: number[], windowSize: number = 3): number[] => {
+    const result: number[] = [];
+    for (let i = 0; i < values.length; i++) {
+      const start = Math.max(0, i - Math.floor(windowSize / 2));
+      const end = Math.min(values.length, i + Math.ceil(windowSize / 2));
+      const sum = values.slice(start, end).reduce((a, b) => a + b, 0);
+      result.push(sum / (end - start));
+    }
+    return result;
+  };
+
+  const generateTimeForecast = (timeData: Date[], valueData: number[], forecastPeriods: number = 6): any[] => {
+    // Simple linear trend forecasting
+    const timeNumbers = timeData.map(d => d.getTime());
+    const regression = calculateLinearRegression(timeNumbers, valueData);
+    
+    const lastDate = timeData[timeData.length - 1];
+    const timeInterval = timeNumbers.length > 1 ? 
+      (timeNumbers[timeNumbers.length - 1] - timeNumbers[0]) / (timeNumbers.length - 1) : 
+      24 * 60 * 60 * 1000; // Default to 1 day
+    
+    const forecast: any[] = [];
+    for (let i = 1; i <= forecastPeriods; i++) {
+      const futureDate = new Date(lastDate.getTime() + i * timeInterval);
+      const forecastValue = regression.slope * futureDate.getTime() + regression.intercept;
+      forecast.push({
+        date: futureDate,
+        value: forecastValue,
+        isForecast: true,
+        confidence: Math.max(0.1, regression.rSquared) // Use R² as confidence proxy
+      });
+    }
+    
+    return forecast;
+  };
+
+  const generateTimeSeriesDescription = async (
+    trend: 'increasing' | 'decreasing' | 'stable',
+    seasonality: boolean,
+    forecast: any[],
+    rSquared: number,
+    dateColumn: string,
+    valueColumn: string
+  ) => {
+    try {
+      const { data: result, error: fnError } = await supabase.functions.invoke('generate-prediction-description', {
+        body: { 
+          timeSeriesAnalysis: true,
+          trend,
+          seasonality,
+          forecast: forecast.slice(0, 3), // First 3 predictions
+          rSquared,
+          dateColumn,
+          valueColumn
+        }
+      });
+      
+      if (fnError) {
+        throw new Error(fnError.message);
+      }
+      
+      return result.description;
+    } catch (error) {
+      console.error('Error generating time series description:', error);
+      // Fallback description
+      const trendText = trend === 'increasing' ? 'upward' : trend === 'decreasing' ? 'downward' : 'stable';
+      const seasonalText = seasonality ? 'with seasonal patterns' : 'without clear seasonality';
+      const confidenceText = rSquared > 0.7 ? 'high' : rSquared > 0.4 ? 'moderate' : 'low';
+      
+      return `The time series analysis of ${valueColumn} over ${dateColumn} shows a ${trendText} trend ${seasonalText}. Based on historical data, the forecast has ${confidenceText} confidence (R² = ${(rSquared * 100).toFixed(1)}%). ${
+        trend === 'increasing' ? `${valueColumn} is expected to continue growing.` : 
+        trend === 'decreasing' ? `${valueColumn} is projected to decline further.` :
+        `${valueColumn} is likely to remain relatively stable.`
+      }`;
+    }
+  };
+
+  const performTimeSeriesAnalysis = async () => {
+    if (!timeSeriesDateColumn || !timeSeriesValueColumn) return;
+    
+    setIsGeneratingTimeSeries(true);
+    try {
+      const dateColumnIndex = columns.indexOf(timeSeriesDateColumn);
+      const valueColumnIndex = columns.indexOf(timeSeriesValueColumn);
+      
+      if (dateColumnIndex === -1 || valueColumnIndex === -1) return;
+      
+      // Extract and clean data
+      const rawData = data.slice(1).map(row => ({
+        date: row[dateColumnIndex],
+        value: row[valueColumnIndex]
+      })).filter(item => 
+        item.date !== null && item.date !== undefined && item.date !== '' &&
+        item.value !== null && item.value !== undefined && item.value !== '' &&
+        !isNaN(Number(item.value))
+      );
+      
+      if (rawData.length < 3) {
+        console.error('Insufficient data for time series analysis');
+        return;
+      }
+      
+      // Parse dates and sort by date
+      const parsedData = rawData.map(item => ({
+        date: parseDate(String(item.date)),
+        value: Number(item.value)
+      })).filter(item => item.date !== null);
+      
+      parsedData.sort((a, b) => a.date!.getTime() - b.date!.getTime());
+      
+      const dates = parsedData.map(item => item.date!);
+      const values = parsedData.map(item => item.value);
+      
+      // Calculate trend
+      const timeNumbers = dates.map(d => d.getTime());
+      const regression = calculateLinearRegression(timeNumbers, values);
+      const trend = regression.slope > 0.01 ? 'increasing' : regression.slope < -0.01 ? 'decreasing' : 'stable';
+      
+      // Simple seasonality detection (check for recurring patterns)
+      const seasonality = values.length > 12 && Math.abs(regression.rSquared) < 0.8; // If not well explained by linear trend
+      
+      // Generate forecast
+      const forecast = generateTimeForecast(dates, values, 6);
+      
+      // Calculate moving average for smoothing
+      const smoothedValues = calculateMovingAverage(values, 3);
+      
+      // Prepare chart data
+      const historicalData = parsedData.map((item, index) => ({
+        date: item.date!.toISOString().split('T')[0],
+        value: item.value,
+        smoothed: smoothedValues[index],
+        isForecast: false
+      }));
+      
+      const forecastData = forecast.map(item => ({
+        date: item.date.toISOString().split('T')[0],
+        value: item.value,
+        isForecast: true,
+        confidence: item.confidence
+      }));
+      
+      const chartData = [...historicalData, ...forecastData];
+      
+      // Generate AI description
+      const description = await generateTimeSeriesDescription(
+        trend,
+        seasonality,
+        forecast,
+        regression.rSquared,
+        timeSeriesDateColumn,
+        timeSeriesValueColumn
+      );
+      
+      setTimeSeriesResult({
+        chartData,
+        historicalData,
+        forecastData,
+        trend,
+        seasonality,
+        regression,
+        description,
+        stats: {
+          totalPoints: parsedData.length,
+          forecastPoints: forecast.length,
+          confidenceScore: regression.rSquared
+        }
+      });
+      
+    } finally {
+      setIsGeneratingTimeSeries(false);
     }
   };
 
@@ -1071,6 +1310,204 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                             />
                           </ComposedChart>
                         </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Time Series Analysis Section */}
+              {showColumnSelection && columnTypes.dateTime.length > 0 && (
+                <div className="flex justify-center">
+                  <Card className="border-2 border-dashed border-accent/30 w-full max-w-4xl">
+                    <CardHeader>
+                      <CardTitle className="text-base font-medium flex items-center justify-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        Time Series Analysis (Forecasting)
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground text-center">
+                        Analyze trends over time and generate forecasts for future periods
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-center">Date/Time Column</h4>
+                          <Select value={timeSeriesDateColumn} onValueChange={setTimeSeriesDateColumn}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select date column..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {columnTypes.dateTime.map((col) => (
+                                <SelectItem key={col} value={col}>{col}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-center">Value Column (Metric)</h4>
+                          <Select value={timeSeriesValueColumn} onValueChange={setTimeSeriesValueColumn}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select metric column..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {columnTypes.numerical.map((col) => (
+                                <SelectItem key={col} value={col}>{col}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-center">
+                        <Button 
+                          onClick={performTimeSeriesAnalysis}
+                          disabled={!timeSeriesDateColumn || !timeSeriesValueColumn || isGeneratingTimeSeries}
+                          className="w-full max-w-md"
+                        >
+                          {isGeneratingTimeSeries ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Analyzing & Forecasting...
+                            </>
+                          ) : (
+                            <>
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Generate Time Series Analysis
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Time Series Analysis Results */}
+              {timeSeriesResult && (
+                <div className="flex justify-center">
+                  <Card className="w-full max-w-5xl">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-center">
+                        Time Series Forecast: {timeSeriesValueColumn} over {timeSeriesDateColumn}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* AI Description */}
+                      <div className="bg-muted/50 p-4 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <Brain className="h-5 w-5 text-primary mt-0.5" />
+                          <div>
+                            <h4 className="font-medium mb-2">AI Time Series Analysis</h4>
+                            <p className="text-sm text-muted-foreground">{timeSeriesResult.description}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Time Series Statistics */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="text-center p-3 bg-background rounded-lg border">
+                          <div className="text-2xl font-bold text-primary">
+                            {timeSeriesResult.trend === 'increasing' ? '↗️' : timeSeriesResult.trend === 'decreasing' ? '↘️' : '➡️'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Trend</div>
+                          <div className="text-xs font-medium mt-1 capitalize">{timeSeriesResult.trend}</div>
+                        </div>
+                        <div className="text-center p-3 bg-background rounded-lg border">
+                          <div className="text-2xl font-bold text-primary">
+                            {(timeSeriesResult.regression.rSquared * 100).toFixed(1)}%
+                          </div>
+                          <div className="text-sm text-muted-foreground">Confidence</div>
+                        </div>
+                        <div className="text-center p-3 bg-background rounded-lg border">
+                          <div className="text-2xl font-bold text-primary">
+                            {timeSeriesResult.stats.totalPoints}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Data Points</div>
+                        </div>
+                        <div className="text-center p-3 bg-background rounded-lg border">
+                          <div className="text-2xl font-bold text-primary">
+                            {timeSeriesResult.stats.forecastPoints}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Forecasted</div>
+                        </div>
+                      </div>
+
+                      {/* Time Series Chart */}
+                      <div data-chart-container className="h-96">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={timeSeriesResult.chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="date" 
+                              type="category"
+                              tick={{ fontSize: 12 }}
+                              angle={-45}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            <YAxis 
+                              name={timeSeriesValueColumn}
+                              tick={{ fontSize: 12 }}
+                            />
+                            <Tooltip 
+                              formatter={(value, name) => [
+                                typeof value === 'number' ? value.toFixed(2) : value, 
+                                name === 'value' ? timeSeriesValueColumn : name
+                              ]}
+                              labelFormatter={(date) => `Date: ${date}`}
+                            />
+                            {/* Historical data line */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="value" 
+                              stroke="#8884d8" 
+                              strokeWidth={2}
+                              dot={{ r: 3 }}
+                              connectNulls={false}
+                              name="Historical Data"
+                            />
+                            {/* Smoothed trend line */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="smoothed" 
+                              stroke="#82ca9d" 
+                              strokeWidth={1}
+                              strokeDasharray="5 5"
+                              dot={false}
+                              connectNulls={false}
+                              name="Trend (Smoothed)"
+                            />
+                            {/* Forecast data */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="value" 
+                              stroke="#ff7300" 
+                              strokeWidth={2}
+                              strokeDasharray="8 4"
+                              dot={{ r: 4, fill: '#ff7300' }}
+                              connectNulls={false}
+                              name="Forecast"
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Forecast Summary */}
+                      <div className="bg-primary/5 p-4 rounded-lg">
+                        <h4 className="font-medium mb-3 text-center">Forecast Summary</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          {timeSeriesResult.forecastData.slice(0, 3).map((forecast: any, index: number) => (
+                            <div key={index} className="text-center p-2 bg-background rounded border">
+                              <div className="font-medium">{forecast.date}</div>
+                              <div className="text-lg font-bold text-primary">{forecast.value.toFixed(2)}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Confidence: {(forecast.confidence * 100).toFixed(0)}%
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

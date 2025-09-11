@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, PieChart, TrendingUp, ArrowLeft, Database, Brain, FileText, Loader2, RefreshCw, Download } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart } from 'recharts';
 import { useBIAnalysis } from '@/hooks/useBIAnalysis';
 import jsPDF from 'jspdf';
@@ -31,6 +32,12 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
   const [customSelectedColumnY, setCustomSelectedColumnY] = useState<string>('');
   const [customChartType, setCustomChartType] = useState<'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'radar' | 'donut' | 'stacked-bar'>('bar');
   const [isGeneratingCustomChart, setIsGeneratingCustomChart] = useState(false);
+  
+  // Predictive Analysis states
+  const [predictiveXColumn, setPredictiveXColumn] = useState<string>('');
+  const [predictiveYColumn, setPredictiveYColumn] = useState<string>('');
+  const [isGeneratingPrediction, setIsGeneratingPrediction] = useState(false);
+  const [predictionResult, setPredictionResult] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen && data.length > 0 && columns.length > 0) {
@@ -113,6 +120,9 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     setCustomSelectedColumnX('');
     setCustomSelectedColumnY('');
     setCustomChartType('bar');
+    setPredictiveXColumn('');
+    setPredictiveYColumn('');
+    setPredictionResult(null);
     performAnalysis();
   };
 
@@ -227,6 +237,131 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
       }
     } finally {
       setIsGeneratingCustomChart(false);
+    }
+  };
+
+  // Linear Regression calculation
+  const calculateLinearRegression = (xData: number[], yData: number[]) => {
+    const n = xData.length;
+    const sumX = xData.reduce((a, b) => a + b, 0);
+    const sumY = yData.reduce((a, b) => a + b, 0);
+    const sumXY = xData.reduce((acc, x, i) => acc + x * yData[i], 0);
+    const sumXX = xData.reduce((acc, x) => acc + x * x, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    // Calculate R-squared
+    const yMean = sumY / n;
+    const ssTotal = yData.reduce((acc, y) => acc + Math.pow(y - yMean, 2), 0);
+    const ssResidual = yData.reduce((acc, y, i) => {
+      const predicted = slope * xData[i] + intercept;
+      return acc + Math.pow(y - predicted, 2);
+    }, 0);
+    const rSquared = 1 - (ssResidual / ssTotal);
+    
+    return { slope, intercept, rSquared };
+  };
+
+  // Generate prediction line data
+  const generatePredictionLine = (xData: number[], slope: number, intercept: number) => {
+    const minX = Math.min(...xData);
+    const maxX = Math.max(...xData);
+    const step = (maxX - minX) / 20;
+    
+    const lineData = [];
+    for (let x = minX; x <= maxX; x += step) {
+      lineData.push({
+        x: x,
+        y: slope * x + intercept,
+        predicted: true
+      });
+    }
+    return lineData;
+  };
+
+  // Generate AI description using OpenAI
+  const generatePredictionDescription = async (slope: number, intercept: number, rSquared: number, xColumn: string, yColumn: string) => {
+    try {
+      const { data: result, error: fnError } = await supabase.functions.invoke('generate-prediction-description', {
+        body: { slope, intercept, rSquared, xColumn, yColumn }
+      });
+      
+      if (fnError) {
+        throw new Error(fnError.message);
+      }
+      
+      return result.description;
+    } catch (error) {
+      console.error('Error generating AI description:', error);
+      // Fallback description
+      const correlation = slope > 0 ? 'positive' : 'negative';
+      const strength = rSquared > 0.7 ? 'strong' : rSquared > 0.4 ? 'moderate' : 'weak';
+      return `There is a ${strength} ${correlation} correlation between ${xColumn} and ${yColumn}. The R² score is ${(rSquared * 100).toFixed(1)}%, indicating ${strength} predictive power. ${slope > 0 ? `As ${xColumn} increases, ${yColumn} tends to increase` : `As ${xColumn} increases, ${yColumn} tends to decrease`}.`;
+    }
+  };
+
+  const performPredictiveAnalysis = async () => {
+    if (!predictiveXColumn || !predictiveYColumn) return;
+    
+    setIsGeneratingPrediction(true);
+    try {
+      const xColumnIndex = columns.indexOf(predictiveXColumn);
+      const yColumnIndex = columns.indexOf(predictiveYColumn);
+      
+      if (xColumnIndex === -1 || yColumnIndex === -1) return;
+      
+      // Extract and clean data
+      const rawData = data.slice(1).map(row => ({
+        x: row[xColumnIndex],
+        y: row[yColumnIndex]
+      })).filter(item => 
+        item.x !== null && item.x !== undefined && item.x !== '' &&
+        item.y !== null && item.y !== undefined && item.y !== '' &&
+        !isNaN(Number(item.x)) && !isNaN(Number(item.y))
+      );
+      
+      if (rawData.length < 2) {
+        console.error('Insufficient numeric data for regression');
+        return;
+      }
+      
+      const xData = rawData.map(item => Number(item.x));
+      const yData = rawData.map(item => Number(item.y));
+      
+      // Calculate linear regression
+      const regression = calculateLinearRegression(xData, yData);
+      const predictionLine = generatePredictionLine(xData, regression.slope, regression.intercept);
+      
+      // Generate AI description
+      const description = await generatePredictionDescription(
+        regression.slope, 
+        regression.intercept, 
+        regression.rSquared, 
+        predictiveXColumn, 
+        predictiveYColumn
+      );
+      
+      // Prepare chart data
+      const scatterData = rawData.map((item, index) => ({
+        x: Number(item.x),
+        y: Number(item.y),
+        name: `Data Point ${index + 1}`,
+        predicted: false
+      }));
+      
+      const chartData = [...scatterData, ...predictionLine];
+      
+      setPredictionResult({
+        regression,
+        chartData,
+        description,
+        scatterData,
+        predictionLine
+      });
+      
+    } finally {
+      setIsGeneratingPrediction(false);
     }
   };
 
@@ -778,6 +913,165 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                           )}
                         </Button>
                        </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Predictive Analysis Section */}
+              {showColumnSelection && (
+                <div className="flex justify-center">
+                  <Card className="border-2 border-dashed border-accent/30 w-full max-w-4xl">
+                    <CardHeader>
+                      <CardTitle className="text-base font-medium flex items-center justify-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        Predictive Analysis
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground text-center">
+                        Perform linear regression analysis to predict relationships between numerical variables
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-center">X-Axis (Independent Variable)</h4>
+                          <Select value={predictiveXColumn} onValueChange={setPredictiveXColumn}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select predictor column..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {columnTypes.numerical.map((col) => (
+                                <SelectItem key={col} value={col}>{col}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-center">Y-Axis (Dependent Variable)</h4>
+                          <Select value={predictiveYColumn} onValueChange={setPredictiveYColumn}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select target column..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {columnTypes.numerical.map((col) => (
+                                <SelectItem key={col} value={col}>{col}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-center">
+                        <Button 
+                          onClick={performPredictiveAnalysis}
+                          disabled={!predictiveXColumn || !predictiveYColumn || isGeneratingPrediction}
+                          className="w-full max-w-md"
+                        >
+                          {isGeneratingPrediction ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Generate Prediction
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Predictive Analysis Results */}
+              {predictionResult && (
+                <div className="flex justify-center">
+                  <Card className="w-full max-w-4xl">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-center">
+                        Linear Regression: {predictiveYColumn} vs {predictiveXColumn}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* AI Description */}
+                      <div className="bg-muted/50 p-4 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <Brain className="h-5 w-5 text-primary mt-0.5" />
+                          <div>
+                            <h4 className="font-medium mb-2">AI Analysis</h4>
+                            <p className="text-sm text-muted-foreground">{predictionResult.description}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Regression Statistics */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center p-3 bg-background rounded-lg border">
+                          <div className="text-2xl font-bold text-primary">
+                            {(predictionResult.regression.rSquared * 100).toFixed(1)}%
+                          </div>
+                          <div className="text-sm text-muted-foreground">R² Score</div>
+                        </div>
+                        <div className="text-center p-3 bg-background rounded-lg border">
+                          <div className="text-2xl font-bold text-primary">
+                            {predictionResult.regression.slope.toFixed(3)}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Slope</div>
+                        </div>
+                        <div className="text-center p-3 bg-background rounded-lg border">
+                          <div className="text-2xl font-bold text-primary">
+                            {predictionResult.regression.intercept.toFixed(3)}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Intercept</div>
+                        </div>
+                      </div>
+
+                      {/* Scatter Plot with Regression Line */}
+                      <div data-chart-container className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={predictionResult.chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="x" 
+                              type="number" 
+                              domain={['dataMin', 'dataMax']}
+                              name={predictiveXColumn}
+                            />
+                            <YAxis 
+                              dataKey="y" 
+                              type="number" 
+                              domain={['dataMin', 'dataMax']}
+                              name={predictiveYColumn}
+                            />
+                            <Tooltip 
+                              formatter={(value, name) => [
+                                typeof value === 'number' ? value.toFixed(2) : value, 
+                                name === 'y' ? predictiveYColumn : predictiveXColumn
+                              ]}
+                            />
+                            {/* Data points */}
+                            <Scatter 
+                              dataKey="y" 
+                              fill="#8884d8" 
+                              data={predictionResult.scatterData}
+                              name="Actual Data"
+                            />
+                            {/* Regression line */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="y" 
+                              stroke="#ff7300" 
+                              strokeWidth={2}
+                              dot={false}
+                              data={predictionResult.predictionLine}
+                              name="Regression Line"
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>

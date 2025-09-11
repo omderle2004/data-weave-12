@@ -856,7 +856,140 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
         }
       }
       
-      // Save PDF
+      // Predictive Analysis section
+      if (predictionResult) {
+        if (yOffset > pageHeight - 60) {
+          pdf.addPage();
+          yOffset = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Predictive Analysis (Linear Regression)', 20, yOffset);
+        yOffset += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Variables: ${predictiveYColumn} vs ${predictiveXColumn}`, 20, yOffset);
+        yOffset += 8;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`R² Score: ${(predictionResult.regression.rSquared * 100).toFixed(1)}%`, 25, yOffset);
+        yOffset += 5;
+        pdf.text(`Slope: ${predictionResult.regression.slope.toFixed(3)}`, 25, yOffset);
+        yOffset += 5;
+        pdf.text(`Intercept: ${predictionResult.regression.intercept.toFixed(3)}`, 25, yOffset);
+        yOffset += 8;
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('AI Analysis:', 25, yOffset);
+        yOffset += 5;
+        
+        pdf.setFont('helvetica', 'normal');
+        const predictionLines = pdf.splitTextToSize(predictionResult.description, pageWidth - 50);
+        pdf.text(predictionLines, 25, yOffset);
+        yOffset += predictionLines.length * 4 + 15;
+      }
+      
+      // Time Series Analysis section
+      if (timeSeriesResult) {
+        if (yOffset > pageHeight - 60) {
+          pdf.addPage();
+          yOffset = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Time Series Analysis (Forecasting)', 20, yOffset);
+        yOffset += 10;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Variables: ${timeSeriesValueColumn} over ${timeSeriesDateColumn}`, 20, yOffset);
+        yOffset += 8;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Trend: ${timeSeriesResult.trend}`, 25, yOffset);
+        yOffset += 5;
+        pdf.text(`Confidence: ${(timeSeriesResult.regression.rSquared * 100).toFixed(1)}%`, 25, yOffset);
+        yOffset += 5;
+        pdf.text(`Data Points: ${timeSeriesResult.stats.totalPoints}`, 25, yOffset);
+        yOffset += 5;
+        pdf.text(`Forecasted Points: ${timeSeriesResult.stats.forecastPoints}`, 25, yOffset);
+        yOffset += 8;
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('AI Analysis:', 25, yOffset);
+        yOffset += 5;
+        
+        pdf.setFont('helvetica', 'normal');
+        const timeSeriesLines = pdf.splitTextToSize(timeSeriesResult.description, pageWidth - 50);
+        pdf.text(timeSeriesLines, 25, yOffset);
+        yOffset += timeSeriesLines.length * 4 + 10;
+        
+        // Forecast Summary
+        if (timeSeriesResult.forecastData && timeSeriesResult.forecastData.length > 0) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Forecast Summary (Next 3 Periods):', 25, yOffset);
+          yOffset += 5;
+          
+          pdf.setFont('helvetica', 'normal');
+          timeSeriesResult.forecastData.slice(0, 3).forEach((forecast: any) => {
+            pdf.text(`${forecast.date}: ${forecast.value.toFixed(2)} (${(forecast.confidence * 100).toFixed(0)}% confidence)`, 30, yOffset);
+            yOffset += 4;
+          });
+          yOffset += 10;
+        }
+      } else if (columnTypes.dateTime.length === 0) {
+        if (yOffset > pageHeight - 30) {
+          pdf.addPage();
+          yOffset = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Time Series Analysis', 20, yOffset);
+        yOffset += 10;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('No date column detected. Time series analysis not available for this dataset.', 25, yOffset);
+        yOffset += 15;
+      }
+      
+      // Custom Charts section
+      const customChartsData = analysisResult.charts.filter((chart: any) => chart.title.includes('Custom:'));
+      if (customChartsData.length > 0) {
+        if (yOffset > pageHeight - 40) {
+          pdf.addPage();
+          yOffset = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Custom Visualizations', 20, yOffset);
+        yOffset += 10;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        customChartsData.forEach((chart: any, index: number) => {
+          pdf.text(`${index + 1}. ${chart.title} (${chart.type} chart)`, 25, yOffset);
+          if (chart.xAxis && chart.yAxis) {
+            pdf.text(`   X-Axis: ${chart.xAxis}, Y-Axis: ${chart.yAxis}`, 25, yOffset + 4);
+            yOffset += 8;
+          } else {
+            yOffset += 5;
+          }
+          
+          if (yOffset > pageHeight - 20) {
+            pdf.addPage();
+            yOffset = 20;
+          }
+        });
+        yOffset += 10;
+      }
       pdf.save(`smartbiz-ai-report-${new Date().toISOString().split('T')[0]}.pdf`);
       
     } catch (error) {
@@ -1331,7 +1464,6 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                   <CardContent className="space-y-6">
                     {columnTypes.dateTime.length === 0 ? (
                       <div className="text-center py-8">
-                        <div className="text-red-500 mb-2">❌</div>
                         <p className="text-muted-foreground">
                           No date column detected. Please upload data with a Date/Time column to run Time Series Analysis.
                         </p>

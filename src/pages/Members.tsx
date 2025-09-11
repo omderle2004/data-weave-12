@@ -24,7 +24,7 @@ export default function Members() {
     name: `${profile?.display_name || user?.email?.split('@')[0] || 'User'} (You)`,
     email: user?.email || '',
     role: "Owner",
-    avatar: profile?.avatar_url || "/lovable-uploads/avatar-placeholder.png"
+    avatar: profile?.avatar_url || "/placeholder-avatar.png"
   };
 
   return (

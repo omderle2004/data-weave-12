@@ -152,30 +152,96 @@ function findNumericColumns(data: any[][], columns: string[]) {
   }).filter(col => col.isNumeric);
 }
 
+function findDateTimeColumns(data: any[][], columns: string[]) {
+  return columns.map((col, index) => {
+    const sample = data.slice(1, Math.min(11, data.length)).map(row => row[index]);
+    
+    // Check for date/time keywords in column names
+    const dateKeywords = ['date', 'day', 'month', 'year', 'time', 'period', 'timestamp', 'created', 'updated', 'modified', 'when'];
+    const hasDateKeyword = dateKeywords.some(keyword => 
+      col.toLowerCase().includes(keyword.toLowerCase())
+    );
+    
+    // Check for date/time patterns in data
+    const dateCount = sample.filter(val => {
+      if (!val) return false;
+      
+      const valStr = String(val).trim();
+      if (!valStr) return false;
+      
+      // Extended date patterns
+      const datePatterns = [
+        /^\d{4}-\d{1,2}-\d{1,2}/, // YYYY-MM-DD
+        /^\d{1,2}\/\d{1,2}\/\d{2,4}/, // MM/DD/YYYY
+        /^\d{1,2}-\d{1,2}-\d{2,4}/, // MM-DD-YYYY
+        /^\d{4}\/\d{1,2}\/\d{1,2}/, // YYYY/MM/DD
+        /^\d{1,2}\.\d{1,2}\.\d{2,4}/, // DD.MM.YYYY
+        /^\d{4}\.\d{1,2}\.\d{1,2}/, // YYYY.MM.DD
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, // ISO datetime
+        /^\d{13}$/, // Unix timestamp (milliseconds)
+        /^\d{10}$/, // Unix timestamp (seconds)
+      ];
+      
+      const matchesPattern = datePatterns.some(pattern => pattern.test(valStr));
+      const parsedDate = new Date(valStr);
+      const isValidDate = !isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900 && parsedDate.getFullYear() < 2100;
+      
+      return matchesPattern || isValidDate;
+    }).length;
+    
+    // More lenient classification for date/time columns
+    const isDateTime = (dateCount > sample.length * 0.5) || 
+                      (hasDateKeyword && dateCount > sample.length * 0.3) || 
+                      (hasDateKeyword && sample.length <= 3 && dateCount > 0);
+    
+    return {
+      name: col,
+      index,
+      isDateTime,
+      confidence: dateCount / sample.length,
+      hasKeyword: hasDateKeyword
+    };
+  }).filter(col => col.isDateTime);
+}
+
 function generateCharts(data: any[][], columns: string[], selectedRevenueColumn?: string, selectedCategoryColumn?: string): ChartData[] {
   const charts: ChartData[] = [];
+  
+  // Find available column types
+  const numericColumns = findNumericColumns(data, columns);
+  const dateTimeColumns = findDateTimeColumns(data, columns);
 
   // Generate revenue trends chart
   let revenueIndex = -1;
   if (selectedRevenueColumn) {
     revenueIndex = columns.indexOf(selectedRevenueColumn);
   } else {
-    revenueIndex = findColumnByKeywords(columns, ['revenue', 'sales', 'income', 'earnings', 'profit']);
+    // First try keywords, then fall back to first numeric column
+    revenueIndex = findColumnByKeywords(columns, ['revenue', 'sales', 'income', 'earnings', 'profit', 'amount', 'value']);
+    if (revenueIndex === -1 && numericColumns.length > 0) {
+      revenueIndex = numericColumns[0].index;
+    }
   }
   
   if (revenueIndex !== -1) {
-    const chartData = data.slice(1).map((row, index) => ({
-      name: `Period ${index + 1}`,
-      value: parseFloat(row[revenueIndex]) || 0
-    }));
+    const chartData = data.slice(1).map((row, index) => {
+      const value = parseFloat(row[revenueIndex]);
+      return {
+        name: `Period ${index + 1}`,
+        value: isNaN(value) ? 0 : value
+      };
+    }).filter(item => item.value !== 0); // Remove zero values for cleaner charts
     
-    charts.push({
-      type: 'line',
-      data: chartData,
-      title: selectedRevenueColumn ? `${selectedRevenueColumn} Trends` : 'Revenue Trends',
-      xAxis: 'name',
-      yAxis: 'value'
-    });
+    if (chartData.length > 0) {
+      charts.push({
+        type: 'line',
+        data: chartData,
+        title: selectedRevenueColumn ? `${selectedRevenueColumn} Trends` : 
+               columns[revenueIndex] ? `${columns[revenueIndex]} Trends` : 'Value Trends',
+        xAxis: 'name',
+        yAxis: 'value'
+      });
+    }
   }
 
   // Generate market share chart
@@ -183,7 +249,7 @@ function generateCharts(data: any[][], columns: string[], selectedRevenueColumn?
   if (selectedCategoryColumn) {
     categoryIndex = columns.indexOf(selectedCategoryColumn);
   } else {
-    categoryIndex = findColumnByKeywords(columns, ['category', 'type', 'product', 'segment', 'region']);
+    categoryIndex = findColumnByKeywords(columns, ['category', 'type', 'product', 'segment', 'region', 'department', 'group']);
   }
   
   if (categoryIndex !== -1) {
@@ -195,16 +261,49 @@ function generateCharts(data: any[][], columns: string[], selectedRevenueColumn?
       }
     });
 
-    const chartData = Object.entries(categoryCount).map(([name, value]) => ({
-      name,
-      value
-    }));
+    const chartData = Object.entries(categoryCount)
+      .filter(([name, value]) => name && value > 0)
+      .map(([name, value]) => ({
+        name: name.substring(0, 20), // Truncate long names
+        value
+      }))
+      .sort((a, b) => b.value - a.value) // Sort by value descending
+      .slice(0, 10); // Limit to top 10 categories
 
     if (chartData.length > 0) {
       charts.push({
         type: 'pie',
         data: chartData,
-        title: selectedCategoryColumn ? `${selectedCategoryColumn} Distribution` : 'Market Share',
+        title: selectedCategoryColumn ? `${selectedCategoryColumn} Distribution` : 
+               columns[categoryIndex] ? `${columns[categoryIndex]} Distribution` : 'Category Distribution',
+        xAxis: 'name',
+        yAxis: 'value'
+      });
+    }
+  }
+
+  // Auto-generate time series chart if date column is available
+  if (dateTimeColumns.length > 0 && numericColumns.length > 0) {
+    const dateCol = dateTimeColumns[0];
+    const valueCol = numericColumns[0];
+    
+    const timeSeriesData = data.slice(1)
+      .map(row => ({
+        date: row[dateCol.index],
+        value: parseFloat(row[valueCol.index])
+      }))
+      .filter(item => item.date && !isNaN(item.value))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map(item => ({
+        name: new Date(item.date).toLocaleDateString(),
+        value: item.value
+      }));
+    
+    if (timeSeriesData.length >= 3) {
+      charts.push({
+        type: 'area',
+        data: timeSeriesData,
+        title: `${valueCol.name} over Time`,
         xAxis: 'name',
         yAxis: 'value'
       });
@@ -246,19 +345,31 @@ async function generateAIInsights(data: any[][], columns: string[], statistics: 
   }
 
   try {
-    const prompt = `Analyze this business data and provide 3 key insights:
+    // Detect column types for better insights
+    const numericColumns = findNumericColumns(data, columns);
+    const dateTimeColumns = findDateTimeColumns(data, columns);
     
-Data summary:
-- ${data.length} records
-- Columns: ${columns.join(', ')}
-- Statistics: ${JSON.stringify(statistics)}
+    const prompt = `Analyze this business dataset and provide 3 key insights:
+    
+Dataset Overview:
+- Total Records: ${data.length - 1}
+- Total Columns: ${columns.length}
+- Numeric Columns: ${numericColumns.map(c => c.name).join(', ') || 'None'}
+- Date/Time Columns: ${dateTimeColumns.map(c => c.name).join(', ') || 'None'}
+- Column Names: ${columns.join(', ')}
 
-Provide insights in the following format:
-1. Growth opportunity insight
-2. Data quality insight  
-3. Actionable recommendation
+Statistical Summary: ${JSON.stringify(statistics)}
 
-Keep each insight under 100 characters and focus on business value.`;
+Provide 3 business insights in this exact format:
+1. [Growth/Trend insight - focus on opportunities and patterns]
+2. [Data Quality insight - assess completeness and reliability] 
+3. [Actionable recommendation - specific next steps]
+
+Requirements:
+- Each insight must be under 120 characters
+- Focus on business value and actionable intelligence
+- Consider time series potential if date columns exist
+- Highlight data quality issues if present`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -269,10 +380,10 @@ Keep each insight under 100 characters and focus on business value.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a business intelligence analyst. Provide concise, actionable insights.' },
+          { role: 'system', content: 'You are an expert business intelligence analyst. Provide concise, actionable insights that help businesses make data-driven decisions. Focus on practical recommendations.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 300,
+        max_tokens: 400,
         temperature: 0.7,
       }),
     });
@@ -307,21 +418,62 @@ function parseAIInsights(content: string): AIInsight[] {
 }
 
 function generateFallbackInsights(data: any[][], statistics: any): AIInsight[] {
-  return [
-    {
+  const numericColumns = findNumericColumns(data, []);
+  const dateTimeColumns = findDateTimeColumns(data, []);
+  
+  const insights: AIInsight[] = [];
+  
+  // Growth insight
+  if (dateTimeColumns.length > 0 && numericColumns.length > 0) {
+    insights.push({
+      type: 'growth',
+      title: 'Time Series Potential',
+      description: `Time-based analysis available! Use ${dateTimeColumns.length} date column(s) with metrics for forecasting.`
+    });
+  } else {
+    insights.push({
       type: 'growth',
       title: 'Growth Opportunity',
-      description: `Dataset contains ${data.length} records. Consider trend analysis for growth insights.`
-    },
-    {
+      description: `Dataset contains ${data.length - 1} records. Add date columns for trend analysis.`
+    });
+  }
+  
+  // Quality insight
+  const qualityScore = calculateQualityScore(data);
+  if (qualityScore >= 90) {
+    insights.push({
       type: 'quality',
-      title: 'Data Quality',
-      description: 'Review data completeness and consider enriching missing values for better analysis.'
-    },
-    {
+      title: 'High Data Quality',
+      description: `Excellent data quality (${qualityScore}%). Ready for advanced analytics and ML models.`
+    });
+  } else if (qualityScore >= 70) {
+    insights.push({
+      type: 'quality',
+      title: 'Good Data Quality',
+      description: `Good data quality (${qualityScore}%). Consider cleaning missing values for better insights.`
+    });
+  } else {
+    insights.push({
+      type: 'quality',
+      title: 'Data Quality Issues',
+      description: `Data quality needs improvement (${qualityScore}%). Clean missing/invalid values first.`
+    });
+  }
+  
+  // Action insight
+  if (dateTimeColumns.length > 0) {
+    insights.push({
       type: 'action',
       title: 'Recommended Actions',
-      description: 'Focus on data-driven decision making. Set up regular monitoring and reporting.'
-    }
-  ];
+      description: 'Set up time series forecasting and automated monitoring for key business metrics.'
+    });
+  } else {
+    insights.push({
+      type: 'action',
+      title: 'Recommended Actions',
+      description: 'Add timestamps to enable trend analysis. Focus on KPI tracking and benchmarking.'
+    });
+  }
+  
+  return insights;
 }

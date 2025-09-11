@@ -77,20 +77,55 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
         val !== null && val !== undefined && val !== '' && !isNaN(Number(val))
       ).length;
       
-      // Check for date/time patterns
+      // Enhanced Date/Time Detection Logic
+      const dateKeywords = ['date', 'day', 'month', 'year', 'time', 'period', 'timestamp', 'created', 'updated', 'modified', 'when'];
+      const hasDateKeyword = dateKeywords.some(keyword => 
+        col.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      // Check for date/time patterns - more comprehensive
       const dateCount = sampleValues.filter(val => {
-        if (!val || typeof val !== 'string') return false;
+        if (!val) return false;
+        
+        const valStr = String(val).trim();
+        if (!valStr) return false;
+        
+        // Extended date patterns
         const datePatterns = [
-          /^\d{4}-\d{2}-\d{2}/, // YYYY-MM-DD
-          /^\d{2}\/\d{2}\/\d{4}/, // MM/DD/YYYY
-          /^\d{2}-\d{2}-\d{4}/, // MM-DD-YYYY
-          /^\d{4}\/\d{2}\/\d{2}/, // YYYY/MM/DD
-          /^\d{1,2}\/\d{1,2}\/\d{2,4}/, // M/D/YY or MM/DD/YYYY
+          /^\d{4}-\d{1,2}-\d{1,2}/, // YYYY-MM-DD or YYYY-M-D
+          /^\d{1,2}\/\d{1,2}\/\d{2,4}/, // MM/DD/YYYY or M/D/YY
+          /^\d{1,2}-\d{1,2}-\d{2,4}/, // MM-DD-YYYY or M-D-YY
+          /^\d{4}\/\d{1,2}\/\d{1,2}/, // YYYY/MM/DD or YYYY/M/D
+          /^\d{1,2}\.\d{1,2}\.\d{2,4}/, // DD.MM.YYYY
+          /^\d{4}\.\d{1,2}\.\d{1,2}/, // YYYY.MM.DD
+          /^\d{1,2}\/\d{1,2}$/, // MM/DD (month/day only)
+          /^\d{4}-\d{1,2}$/, // YYYY-MM (year-month only)
+          /^\d{4}$/, // YYYY (year only)
+          /^\w{3}\s+\d{1,2},?\s+\d{4}/, // Mon Jan 1, 2023 or Mon Jan 1 2023
+          /^\w{3}\s+\d{1,2}/, // Mon 15 or Jan 15
+          /^\d{1,2}\s+\w{3}\s+\d{4}/, // 15 Jan 2023
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, // ISO datetime
+          /^\d{1,2}:\d{2}/, // Time format HH:MM
+          /^\d{13}$/, // Unix timestamp (milliseconds)
+          /^\d{10}$/, // Unix timestamp (seconds)
         ];
-        return datePatterns.some(pattern => pattern.test(val)) || !isNaN(Date.parse(val));
+        
+        // Check if matches any date pattern
+        const matchesPattern = datePatterns.some(pattern => pattern.test(valStr));
+        
+        // Try to parse as date
+        const parsedDate = new Date(valStr);
+        const isValidDate = !isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900 && parsedDate.getFullYear() < 2100;
+        
+        return matchesPattern || isValidDate;
       }).length;
       
-      if (dateCount > sampleValues.length * 0.7) {
+      // More lenient date/time classification
+      const isDateTime = (dateCount > sampleValues.length * 0.5) || // 50% instead of 70%
+                        (hasDateKeyword && dateCount > sampleValues.length * 0.3) || // If has keyword, only need 30%
+                        (hasDateKeyword && sampleValues.length <= 3 && dateCount > 0); // For small samples with keywords
+      
+      if (isDateTime) {
         dateTime.push(col);
       } else if (numericCount > sampleValues.length * 0.7) {
         numerical.push(col);
@@ -920,7 +955,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
         
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Time Series Analysis (Forecasting)', 20, yOffset);
+        pdf.text('📈 Time Series Analysis & Forecasting', 20, yOffset);
         yOffset += 10;
         
         pdf.setFontSize(11);
@@ -969,12 +1004,20 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
         
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Time Series Analysis', 20, yOffset);
+        pdf.text('📈 Time Series Analysis & Forecasting', 20, yOffset);
         yOffset += 10;
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
-        pdf.text('No date column detected. Time series analysis not available for this dataset.', 25, yOffset);
+        if (columnTypes.dateTime.length === 0) {
+          pdf.text('❌ No date/time columns detected automatically.', 25, yOffset);
+          yOffset += 5;
+          pdf.text('💡 Manual selection required: Choose a column containing dates/times in the dashboard.', 25, yOffset);
+          yOffset += 5;
+          pdf.text('📋 Supported formats: YYYY-MM-DD, MM/DD/YYYY, timestamps, etc.', 25, yOffset);
+        } else {
+          pdf.text('⚠️ Time series analysis not configured (requires column selection in dashboard).', 25, yOffset);
+        }
         yOffset += 15;
       }
       

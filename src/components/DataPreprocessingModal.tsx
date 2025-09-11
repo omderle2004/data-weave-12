@@ -158,6 +158,16 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
       return;
     }
 
+    // Check if data is already perfect
+    const hasIssues = analysisResults.missingValues > 0 || 
+                     analysisResults.duplicateRows > 0 || 
+                     analysisResults.dataTypeIssues > 0;
+
+    if (!hasIssues) {
+      toast.success('Your data is ready to go, Enjoy Analysis! 🎉');
+      return;
+    }
+
     setIsFixingData(true);
     try {
       const { data: result, error } = await supabase.functions.invoke('clean-data-with-ai', {
@@ -366,8 +376,8 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
           </div>
 
 
-          {/* AI Fix Section */}
-          {hasData && analysisResults && (analysisResults.missingValues > 0 || analysisResults.duplicateRows > 0 || analysisResults.dataTypeIssues > 0) && (
+          {/* AI Fix Section - Always visible */}
+          {hasData && analysisResults && (
             <Card className="border-blue-200 bg-blue-50/50">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -377,13 +387,17 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
                     </div>
                     <div>
                       <h3 className="font-medium text-blue-900">AI-Powered Data Cleaning</h3>
-                      <p className="text-sm text-blue-700">Let our AI automatically fix data quality issues</p>
+                      <p className="text-sm text-blue-700">
+                        {(analysisResults.missingValues > 0 || analysisResults.duplicateRows > 0 || analysisResults.dataTypeIssues > 0)
+                          ? "Let our AI automatically fix data quality issues"
+                          : "Your data looks great! Click to confirm quality"}
+                      </p>
                     </div>
                   </div>
                   <Button 
                     onClick={handleFixWithAI}
-                    disabled={isFixingData}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={isFixingData || (analysisResults.missingValues === 0 && analysisResults.duplicateRows === 0 && analysisResults.dataTypeIssues === 0)}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
                   >
                     {isFixingData ? (
                       <>

@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart3, PieChart, TrendingUp, ArrowLeft, Database, Brain, FileText, Loader2, RefreshCw, Download } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart } from 'recharts';
 import { useBIAnalysis } from '@/hooks/useBIAnalysis';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface BIDashboardModalProps {
   isOpen: boolean;
@@ -363,39 +365,158 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
     }
   };
 
-  const exportBIReport = () => {
+  const exportBIReport = async () => {
     if (!analysisResult) return;
     
-    // Create a comprehensive report object
-    const report = {
-      title: 'SmartBiz AI - BI Analysis Report',
-      generatedAt: new Date().toISOString(),
-      datasetInfo: {
-        totalRecords: analysisResult.statistics?.totalRecords || data.length - 1,
-        totalColumns: columns.length,
-        columns: columns
-      },
-      statistics: analysisResult.statistics,
-      qualityScore: analysisResult.qualityScore,
-      insights: analysisResult.insights,
-      charts: analysisResult.charts.map((chart: any) => ({
-        title: chart.title,
-        type: chart.type,
-        dataPoints: chart.data?.length || 0
-      }))
-    };
-    
-    // Create and download JSON file
-    const dataStr = JSON.stringify(report, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `smartbiz-ai-report-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let yOffset = 20;
+      
+      // Header with branding
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('SmartBiz AI – BI Dashboard Report', pageWidth / 2, yOffset, { align: 'center' });
+      yOffset += 15;
+      
+      // Metadata
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const timestamp = new Date().toLocaleString();
+      const filename = `Report_${new Date().toISOString().split('T')[0]}`;
+      pdf.text(`Generated: ${timestamp}`, 20, yOffset);
+      yOffset += 5;
+      pdf.text(`Filename: ${filename}`, 20, yOffset);
+      yOffset += 5;
+      pdf.text(`Dataset: ${analysisResult.statistics?.totalRecords || data.length - 1} records, ${columns.length} columns`, 20, yOffset);
+      yOffset += 15;
+      
+      // AI-Generated Key Insights
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('AI-Generated Key Insights', 20, yOffset);
+      yOffset += 10;
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      if (analysisResult.insights) {
+        analysisResult.insights.forEach((insight: any) => {
+          const lines = pdf.splitTextToSize(`• ${insight.text}`, pageWidth - 40);
+          pdf.text(lines, 25, yOffset);
+          yOffset += lines.length * 5;
+          if (yOffset > pageHeight - 20) {
+            pdf.addPage();
+            yOffset = 20;
+          }
+        });
+      }
+      yOffset += 10;
+      
+      // Statistical Analysis
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Statistical Analysis', 20, yOffset);
+      yOffset += 10;
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      if (analysisResult.statistics) {
+        const stats = analysisResult.statistics;
+        pdf.text(`Total Records: ${stats.totalRecords || 'N/A'}`, 25, yOffset);
+        yOffset += 5;
+        pdf.text(`Data Quality Score: ${analysisResult.qualityScore || 'N/A'}%`, 25, yOffset);
+        yOffset += 5;
+        
+        if (stats.numericalStats) {
+          Object.entries(stats.numericalStats).forEach(([column, data]: [string, any]) => {
+            pdf.text(`${column}: Mean=${data.mean?.toFixed(2)}, Median=${data.median?.toFixed(2)}, Std Dev=${data.standardDeviation?.toFixed(2)}`, 25, yOffset);
+            yOffset += 5;
+            if (yOffset > pageHeight - 20) {
+              pdf.addPage();
+              yOffset = 20;
+            }
+          });
+        }
+      }
+      yOffset += 10;
+      
+      // Charts section
+      if (analysisResult.charts && analysisResult.charts.length > 0) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Charts & Visualizations', 20, yOffset);
+        yOffset += 10;
+        
+        // Capture chart screenshots
+        const chartElements = document.querySelectorAll('[data-chart-container]');
+        for (let i = 0; i < chartElements.length && i < analysisResult.charts.length; i++) {
+          try {
+            if (yOffset > pageHeight - 80) {
+              pdf.addPage();
+              yOffset = 20;
+            }
+            
+            const canvas = await html2canvas(chartElements[i] as HTMLElement, {
+              backgroundColor: '#ffffff',
+              scale: 1.5
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 160;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(analysisResult.charts[i].title || `Chart ${i + 1}`, 20, yOffset);
+            yOffset += 8;
+            
+            pdf.addImage(imgData, 'PNG', 25, yOffset, imgWidth, Math.min(imgHeight, 100));
+            yOffset += Math.min(imgHeight, 100) + 15;
+          } catch (error) {
+            console.warn('Failed to capture chart:', error);
+            pdf.setFontSize(10);
+            pdf.text(`Chart: ${analysisResult.charts[i].title || `Chart ${i + 1}`} (Preview not available)`, 25, yOffset);
+            yOffset += 10;
+          }
+        }
+      }
+      
+      // Save PDF
+      pdf.save(`smartbiz-ai-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      // Fallback to JSON export
+      const report = {
+        title: 'SmartBiz AI - BI Analysis Report',
+        generatedAt: new Date().toISOString(),
+        datasetInfo: {
+          totalRecords: analysisResult.statistics?.totalRecords || data.length - 1,
+          totalColumns: columns.length,
+          columns: columns
+        },
+        statistics: analysisResult.statistics,
+        qualityScore: analysisResult.qualityScore,
+        insights: analysisResult.insights,
+        charts: analysisResult.charts.map((chart: any) => ({
+          title: chart.title,
+          type: chart.type,
+          dataPoints: chart.data?.length || 0
+        }))
+      };
+      
+      const dataStr = JSON.stringify(report, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `smartbiz-ai-report-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -475,7 +596,7 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                       )}
                     </CardHeader>
                     <CardContent>
-                      <div className="h-48">
+                      <div className="h-48" data-chart-container>
                         {renderChart(chart)}
                       </div>
                     </CardContent>
@@ -571,87 +692,91 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                 </Card>
               )}
 
-              {/* Custom Visualization Section */}
+              {/* Custom Visualization Section - Centered Layout */}
               {showColumnSelection && (
-                <Card className="border-2 border-dashed border-accent/30">
-                  <CardHeader>
-                    <CardTitle className="text-base font-medium flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      Custom Visualization
-                    </CardTitle>
-                     <p className="text-sm text-muted-foreground">
-                       Create custom charts by selecting columns for bi-variate analysis (e.g., Revenue vs Region, Sales vs Month)
-                     </p>
-                  </CardHeader>
-                   <CardContent className="space-y-6">
-                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                       <div className="space-y-3">
-                         <h4 className="font-medium">Column 1 (X-Axis / Grouping)</h4>
-                         <Select value={customSelectedColumnX} onValueChange={setCustomSelectedColumnX}>
-                           <SelectTrigger>
-                             <SelectValue placeholder="Choose X-axis column..." />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {columns.map((col) => (
-                               <SelectItem key={col} value={col}>{col}</SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
+                <div className="flex justify-center">
+                  <Card className="border-2 border-dashed border-accent/30 w-full max-w-4xl">
+                    <CardHeader>
+                      <CardTitle className="text-base font-medium flex items-center justify-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        Custom Visualization
+                      </CardTitle>
+                       <p className="text-sm text-muted-foreground text-center">
+                         Create custom charts by selecting columns for bi-variate analysis (e.g., Revenue vs Region, Sales vs Month)
+                       </p>
+                    </CardHeader>
+                     <CardContent className="space-y-6">
+                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                         <div className="space-y-3">
+                           <h4 className="font-medium text-center">Column 1 (X-Axis / Grouping)</h4>
+                           <Select value={customSelectedColumnX} onValueChange={setCustomSelectedColumnX}>
+                             <SelectTrigger>
+                               <SelectValue placeholder="Choose X-axis column..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                               {columns.map((col) => (
+                                 <SelectItem key={col} value={col}>{col}</SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                         </div>
 
-                       <div className="space-y-3">
-                         <h4 className="font-medium">Column 2 (Y-Axis / Metric)</h4>
-                         <Select value={customSelectedColumnY} onValueChange={setCustomSelectedColumnY}>
-                           <SelectTrigger>
-                             <SelectValue placeholder="Choose Y-axis column..." />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {columns.map((col) => (
-                               <SelectItem key={col} value={col}>{col}</SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
+                         <div className="space-y-3">
+                           <h4 className="font-medium text-center">Column 2 (Y-Axis / Metric)</h4>
+                           <Select value={customSelectedColumnY} onValueChange={setCustomSelectedColumnY}>
+                             <SelectTrigger>
+                               <SelectValue placeholder="Choose Y-axis column..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                               {columns.map((col) => (
+                                 <SelectItem key={col} value={col}>{col}</SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                         </div>
+                         
+                         <div className="space-y-3">
+                           <h4 className="font-medium text-center">Chart Type</h4>
+                           <Select value={customChartType} onValueChange={(value) => setCustomChartType(value as any)}>
+                             <SelectTrigger>
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="bar">Bar Chart</SelectItem>
+                               <SelectItem value="line">Line Chart</SelectItem>
+                               <SelectItem value="pie">Pie Chart</SelectItem>
+                               <SelectItem value="area">Area Chart</SelectItem>
+                               <SelectItem value="scatter">Scatter Plot</SelectItem>
+                               <SelectItem value="radar">Radar Chart</SelectItem>
+                               <SelectItem value="donut">Donut Chart</SelectItem>
+                               <SelectItem value="stacked-bar">Stacked Bar Chart</SelectItem>
+                             </SelectContent>
+                           </Select>
+                         </div>
                        </div>
                        
-                       <div className="space-y-3">
-                         <h4 className="font-medium">Chart Type</h4>
-                         <Select value={customChartType} onValueChange={(value) => setCustomChartType(value as any)}>
-                           <SelectTrigger>
-                             <SelectValue />
-                           </SelectTrigger>
-                           <SelectContent>
-                             <SelectItem value="bar">Bar Chart</SelectItem>
-                             <SelectItem value="line">Line Chart</SelectItem>
-                             <SelectItem value="pie">Pie Chart</SelectItem>
-                             <SelectItem value="area">Area Chart</SelectItem>
-                             <SelectItem value="scatter">Scatter Plot</SelectItem>
-                             <SelectItem value="radar">Radar Chart</SelectItem>
-                             <SelectItem value="donut">Donut Chart</SelectItem>
-                             <SelectItem value="stacked-bar">Stacked Bar Chart</SelectItem>
-                           </SelectContent>
-                         </Select>
+                       <div className="flex justify-center">
+                         <Button 
+                           onClick={generateCustomChart}
+                           disabled={(!customSelectedColumnX && !customSelectedColumnY) || isGeneratingCustomChart}
+                           className="w-full max-w-md"
+                         >
+                          {isGeneratingCustomChart ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Generating Chart...
+                            </>
+                          ) : (
+                            <>
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              Generate Custom Chart
+                            </>
+                          )}
+                        </Button>
                        </div>
-                     </div>
-                     
-                     <Button 
-                       onClick={generateCustomChart}
-                       disabled={(!customSelectedColumnX && !customSelectedColumnY) || isGeneratingCustomChart}
-                       className="w-full"
-                     >
-                      {isGeneratingCustomChart ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Generating Chart...
-                        </>
-                      ) : (
-                        <>
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          Generate Custom Chart
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {/* No data available placeholder */}

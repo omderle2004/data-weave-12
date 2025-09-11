@@ -1316,73 +1316,82 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
                 </div>
               )}
 
-              {/* Time Series Analysis Section */}
-              {showColumnSelection && columnTypes.dateTime.length > 0 && (
-                <div className="flex justify-center">
-                  <Card className="border-2 border-dashed border-accent/30 w-full max-w-4xl">
-                    <CardHeader>
-                      <CardTitle className="text-base font-medium flex items-center justify-center gap-2">
-                        <TrendingUp className="h-4 w-4" />
-                        Time Series Analysis (Forecasting)
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground text-center">
-                        Analyze trends over time and generate forecasts for future periods
-                      </p>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <h4 className="font-medium text-center">Date/Time Column</h4>
-                          <Select value={timeSeriesDateColumn} onValueChange={setTimeSeriesDateColumn}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select date column..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {columnTypes.dateTime.map((col) => (
-                                <SelectItem key={col} value={col}>{col}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+              {/* Time Series Analysis Section - Always Visible */}
+              <div className="flex justify-center">
+                <Card className="border-2 border-dashed border-accent/30 w-full max-w-4xl">
+                  <CardHeader>
+                    <CardTitle className="text-base font-medium flex items-center justify-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Time Series Analysis (Forecasting)
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Analyze trends over time and generate forecasts for future periods
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {columnTypes.dateTime.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-red-500 mb-2">❌</div>
+                        <p className="text-muted-foreground">
+                          No date column detected. Please upload data with a Date/Time column to run Time Series Analysis.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-center">Date/Time Column</h4>
+                            <Select value={timeSeriesDateColumn} onValueChange={setTimeSeriesDateColumn}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select date column..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {columnTypes.dateTime.map((col) => (
+                                  <SelectItem key={col} value={col}>{col}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-center">Value Column (Metric)</h4>
+                            <Select value={timeSeriesValueColumn} onValueChange={setTimeSeriesValueColumn}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select metric column..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {columnTypes.numerical.map((col) => (
+                                  <SelectItem key={col} value={col}>{col}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                         
-                        <div className="space-y-3">
-                          <h4 className="font-medium text-center">Value Column (Metric)</h4>
-                          <Select value={timeSeriesValueColumn} onValueChange={setTimeSeriesValueColumn}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select metric column..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {columnTypes.numerical.map((col) => (
-                                <SelectItem key={col} value={col}>{col}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="flex justify-center">
+                          <Button 
+                            onClick={performTimeSeriesAnalysis}
+                            disabled={!timeSeriesDateColumn || !timeSeriesValueColumn || isGeneratingTimeSeries}
+                            className="w-full max-w-md"
+                          >
+                            {isGeneratingTimeSeries ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Analyzing & Forecasting...
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp className="h-4 w-4 mr-2" />
+                                Generate Time Series Analysis
+                              </>
+                            )}
+                          </Button>
                         </div>
-                      </div>
-                      
-                      <div className="flex justify-center">
-                        <Button 
-                          onClick={performTimeSeriesAnalysis}
-                          disabled={!timeSeriesDateColumn || !timeSeriesValueColumn || isGeneratingTimeSeries}
-                          className="w-full max-w-md"
-                        >
-                          {isGeneratingTimeSeries ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Analyzing & Forecasting...
-                            </>
-                          ) : (
-                            <>
-                              <TrendingUp className="h-4 w-4 mr-2" />
-                              Generate Time Series Analysis
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Time Series Analysis Results */}
               {timeSeriesResult && (

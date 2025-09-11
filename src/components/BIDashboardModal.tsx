@@ -584,9 +584,13 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
           {analysisResult && !loading && (
             <>
               {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className={`grid gap-6 ${
+                analysisResult.charts.length === 1 
+                  ? 'grid-cols-1 place-items-center' 
+                  : 'grid-cols-1 lg:grid-cols-2'
+              }`}>
                 {analysisResult.charts.map((chart: any, index: number) => (
-                  <Card key={index}>
+                  <Card key={index} className={analysisResult.charts.length === 1 ? 'w-full max-w-2xl' : ''}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-base font-medium">{chart.title}</CardTitle>
                       {chart.type === 'pie' ? (

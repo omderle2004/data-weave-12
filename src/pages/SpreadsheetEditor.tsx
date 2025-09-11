@@ -235,7 +235,11 @@ export default function SpreadsheetEditor() {
               <ChevronLeft className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
               <span className="text-xs lg:text-sm">Back</span>
             </Button>
-            <div className="w-5 h-5 lg:w-6 lg:h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded shrink-0"></div>
+            <img 
+              src="/lovable-uploads/f8953591-fc49-4dd1-9fdf-6d69cf74426b.png" 
+              alt="SmartBiz AI Logo" 
+              className="w-5 h-5 lg:w-6 lg:h-6 rounded object-contain shrink-0"
+            />
           </div>
           
           <DropdownMenu>

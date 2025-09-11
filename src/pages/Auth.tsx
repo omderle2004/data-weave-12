@@ -85,9 +85,11 @@ export default function Auth() {
           </Button>
           
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Database className="h-6 w-6 text-white" />
-            </div>
+            <img 
+              src="/lovable-uploads/f8953591-fc49-4dd1-9fdf-6d69cf74426b.png" 
+              alt="SmartBiz AI Logo" 
+              className="h-10 w-10 rounded-lg object-contain"
+            />
             <span className="text-2xl font-bold text-white">SmartBiz AI</span>
           </div>
           <p className="text-gray-300">AI Powered Data and BI Analysis</p>

@@ -748,6 +748,25 @@ export function BIDashboardModal({ isOpen, onClose, data = [], columns = [] }: B
       const pageHeight = pdf.internal.pageSize.getHeight();
       let yOffset = 20;
       
+      // Add logo
+      try {
+        const logoImg = new Image();
+        logoImg.crossOrigin = 'anonymous';
+        await new Promise((resolve, reject) => {
+          logoImg.onload = resolve;
+          logoImg.onerror = reject;
+          logoImg.src = '/lovable-uploads/f8953591-fc49-4dd1-9fdf-6d69cf74426b.png';
+        });
+        
+        // Add logo to PDF (centered, small size)
+        const logoSize = 15; // 15mm
+        const logoX = (pageWidth - logoSize) / 2;
+        pdf.addImage(logoImg, 'PNG', logoX, yOffset - 5, logoSize, logoSize);
+        yOffset += logoSize + 5;
+      } catch (error) {
+        console.log('Could not load logo for PDF');
+      }
+      
       // Header with branding
       pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');

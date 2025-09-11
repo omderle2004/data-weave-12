@@ -20,7 +20,7 @@ export default function Landing() {
       <nav className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img 
-            src="/lovable-uploads/c6d30e05-e58b-4688-978f-343ef2fedf2b.png" 
+            src="/lovable-uploads/f8953591-fc49-4dd1-9fdf-6d69cf74426b.png" 
             alt="SmartBiz AI Logo" 
             className="h-8 w-8 rounded-lg object-contain"
           />

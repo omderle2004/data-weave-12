@@ -92,9 +92,11 @@ export function AppSidebar() {
     >
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-            <FolderOpen className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <img 
+            src="/lovable-uploads/c6d30e05-e58b-4688-978f-343ef2fedf2b.png" 
+            alt="SmartBiz AI Logo" 
+            className="h-8 w-8 rounded-lg object-contain"
+          />
           {!collapsed && (
             <div>
               <h1 className="font-semibold text-sidebar-foreground">SmartBiz AI</h1>

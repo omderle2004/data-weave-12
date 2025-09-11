@@ -19,9 +19,11 @@ export default function Landing() {
       {/* Navigation */}
       <nav className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <Database className="h-5 w-5 text-white" />
-          </div>
+          <img 
+            src="/lovable-uploads/c6d30e05-e58b-4688-978f-343ef2fedf2b.png" 
+            alt="SmartBiz AI Logo" 
+            className="h-8 w-8 rounded-lg object-contain"
+          />
           <span className="text-xl font-bold text-white">SmartBiz AI</span>
         </div>
         

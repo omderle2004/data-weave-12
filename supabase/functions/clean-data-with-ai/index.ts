@@ -17,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    const { data: spreadsheetData, projectId } = await req.json();
+    const { data: spreadsheetData, projectId, options } = await req.json();
 
     if (!spreadsheetData || !Array.isArray(spreadsheetData)) {
       throw new Error('Invalid spreadsheet data provided');
@@ -28,8 +28,8 @@ serve(async (req) => {
     // Analyze data quality issues
     const analysisResult = analyzeDataQuality(spreadsheetData);
     
-    // Clean data with AI assistance
-    const cleanedData = await cleanDataWithGemini(spreadsheetData, analysisResult);
+    // Clean data using user-selected methods
+    const cleanedData = cleanDataWithUserMethods(spreadsheetData, options || {});
     
     // Update project in database if projectId provided
     if (projectId) {
@@ -70,34 +70,168 @@ serve(async (req) => {
   }
 });
 
-async function processLargeDataset(data: string[][], analysis: any, projectId?: string) {
-  try {
-    const qualityAnalysis = analyzeDataQuality(data);
-    const cleaningResult = await cleanDataWithGemini(data, qualityAnalysis);
+function detectColumnType(data: string[][], colIndex: number): 'numeric' | 'text' | 'date' {
+  if (data.length < 2) return 'text';
+  
+  const sampleValues = data.slice(1, Math.min(20, data.length)).map(row => row[colIndex]);
+  const validValues = sampleValues.filter(v => v !== null && v !== undefined && v !== '');
+  
+  if (validValues.length === 0) return 'text';
+  
+  // Check if numeric
+  const numericCount = validValues.filter(v => !isNaN(Number(v))).length;
+  if (numericCount / validValues.length > 0.8) return 'numeric';
+  
+  // Check if date
+  const dateCount = validValues.filter(v => {
+    const parsed = new Date(v);
+    return !isNaN(parsed.getTime());
+  }).length;
+  if (dateCount / validValues.length > 0.8) return 'date';
+  
+  return 'text';
+}
+
+function calculateMean(values: number[]): number {
+  const sum = values.reduce((acc, val) => acc + val, 0);
+  return sum / values.length;
+}
+
+function calculateMedian(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function calculateMode(values: any[]): any {
+  const frequency: Record<string, number> = {};
+  values.forEach(val => {
+    const key = String(val);
+    frequency[key] = (frequency[key] || 0) + 1;
+  });
+  let maxFreq = 0;
+  let mode = values[0];
+  Object.entries(frequency).forEach(([key, freq]) => {
+    if (freq > maxFreq) {
+      maxFreq = freq;
+      mode = key;
+    }
+  });
+  return mode;
+}
+
+function cleanDataWithUserMethods(data: string[][], options: any) {
+  const cleanedData = [...data];
+  const summary = { rowsRemoved: 0, valuesFilled: 0, formatsStandardized: 0 };
+
+  const { numericMethod = 'mean', textMethod = 'na', dateMethod = 'today' } = options;
+
+  // Remove duplicates first
+  const seenRows = new Set<string>();
+  const headers = cleanedData[0];
+  const uniqueRows = [headers];
+
+  for (let i = 1; i < cleanedData.length; i++) {
+    const rowString = cleanedData[i].join('|');
+    if (!seenRows.has(rowString)) {
+      seenRows.add(rowString);
+      uniqueRows.push(cleanedData[i]);
+    } else {
+      summary.rowsRemoved++;
+    }
+  }
+
+  // Handle missing values per column based on type and user selection
+  for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+    const colType = detectColumnType(uniqueRows, colIndex);
     
-    if (projectId) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      
-      if (supabaseUrl && supabaseKey) {
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        
-        await supabase
-          .from('projects')
-          .update({ 
-            data: cleaningResult.cleanedData,
-            quality_score: calculateQualityScore(cleaningResult.cleanedData),
-            status: 'completed'
-          })
-          .eq('id', projectId);
+    const validValues = uniqueRows.slice(1).map((row, rowIdx) => ({ value: row[colIndex], rowIdx: rowIdx + 1 }))
+      .filter(item => item.value !== null && item.value !== undefined && item.value !== '');
+
+    let fillValue: any;
+
+    if (colType === 'numeric') {
+      const numericValues = validValues.map(item => Number(item.value));
+      switch (numericMethod) {
+        case 'mean':
+          fillValue = calculateMean(numericValues);
+          break;
+        case 'median':
+          fillValue = calculateMedian(numericValues);
+          break;
+        case 'mode':
+          fillValue = calculateMode(numericValues);
+          break;
+      }
+    } else if (colType === 'text') {
+      switch (textMethod) {
+        case 'na':
+          fillValue = 'N/A';
+          break;
+        case 'mode':
+          fillValue = calculateMode(validValues.map(item => item.value));
+          break;
+      }
+    } else if (colType === 'date') {
+      switch (dateMethod) {
+        case 'today':
+          fillValue = new Date().toISOString().split('T')[0];
+          break;
       }
     }
-    
-    console.log('Large dataset processing completed');
-    return cleaningResult;
-  } catch (error) {
-    console.error('Background processing failed:', error);
+
+    // Apply forward fill or backward fill
+    if (numericMethod === 'ffill' || textMethod === 'ffill' || dateMethod === 'ffill') {
+      let lastValid: any = null;
+      for (let i = 1; i < uniqueRows.length; i++) {
+        if (uniqueRows[i][colIndex] !== null && uniqueRows[i][colIndex] !== undefined && uniqueRows[i][colIndex] !== '') {
+          lastValid = uniqueRows[i][colIndex];
+        } else if (lastValid !== null) {
+          uniqueRows[i][colIndex] = lastValid;
+          summary.valuesFilled++;
+        }
+      }
+    } else if (dateMethod === 'bfill') {
+      let nextValid: any = null;
+      for (let i = uniqueRows.length - 1; i >= 1; i--) {
+        if (uniqueRows[i][colIndex] !== null && uniqueRows[i][colIndex] !== undefined && uniqueRows[i][colIndex] !== '') {
+          nextValid = uniqueRows[i][colIndex];
+        } else if (nextValid !== null) {
+          uniqueRows[i][colIndex] = nextValid;
+          summary.valuesFilled++;
+        }
+      }
+    } else if (dateMethod === 'interpolate' && colType === 'date') {
+      // Simple linear interpolation for dates
+      for (let i = 1; i < uniqueRows.length; i++) {
+        if (!uniqueRows[i][colIndex] || uniqueRows[i][colIndex] === '') {
+          const prevIdx = i - 1;
+          let nextIdx = i + 1;
+          while (nextIdx < uniqueRows.length && (!uniqueRows[nextIdx][colIndex] || uniqueRows[nextIdx][colIndex] === '')) {
+            nextIdx++;
+          }
+          if (prevIdx >= 1 && nextIdx < uniqueRows.length) {
+            const prevDate = new Date(uniqueRows[prevIdx][colIndex]);
+            const nextDate = new Date(uniqueRows[nextIdx][colIndex]);
+            const steps = nextIdx - prevIdx;
+            const interpolatedDate = new Date(prevDate.getTime() + ((nextDate.getTime() - prevDate.getTime()) / steps));
+            uniqueRows[i][colIndex] = interpolatedDate.toISOString().split('T')[0];
+            summary.valuesFilled++;
+          }
+        }
+      }
+    } else if (fillValue !== undefined) {
+      // Apply calculated fill value
+      for (let i = 1; i < uniqueRows.length; i++) {
+        if (!uniqueRows[i][colIndex] || uniqueRows[i][colIndex] === '') {
+          uniqueRows[i][colIndex] = fillValue;
+          summary.valuesFilled++;
+        }
+      }
+    }
   }
+
+  return { data: uniqueRows, summary };
 }
 
 function analyzeDataQuality(data: string[][]) {

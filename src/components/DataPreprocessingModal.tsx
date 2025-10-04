@@ -419,7 +419,9 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
       {/* AI Fix Options Panel */}
       <AIFixOptionsPanel 
         isOpen={showAIFixPanel} 
-        onBack={() => setShowAIFixPanel(false)} 
+        onBack={() => setShowAIFixPanel(false)}
+        importedData={importedData}
+        onDataUpdate={onDataUpdate}
       />
     </>
   );

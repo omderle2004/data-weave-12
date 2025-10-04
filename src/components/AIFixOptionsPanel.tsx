@@ -14,9 +14,10 @@ interface AIFixOptionsPanelProps {
   importedData: any[][] | null;
   onDataUpdate: (data: any[][]) => void;
   projectId?: string;
+  onDataCleaned?: () => void;
 }
 
-export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, projectId }: AIFixOptionsPanelProps) {
+export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, projectId, onDataCleaned }: AIFixOptionsPanelProps) {
   const [numericMethod, setNumericMethod] = useState('mean');
   const [textMethod, setTextMethod] = useState('na');
   const [dateMethod, setDateMethod] = useState('today');
@@ -170,6 +171,7 @@ export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, 
       });
 
       await updateDataAndDatabase(cleanedData);
+      onDataCleaned?.();
       toast.success('Missing values handled successfully');
     } catch (error) {
       console.error('Error handling missing values:', error);
@@ -193,6 +195,7 @@ export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, 
       )];
 
       await updateDataAndDatabase(cleanedData);
+      onDataCleaned?.();
       toast.success(`Removed ${importedData.length - cleanedData.length} rows with null values`);
     } catch (error) {
       console.error('Error removing rows with nulls:', error);
@@ -226,6 +229,7 @@ export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, 
 
       if (result.success && result.cleanedData) {
         onDataUpdate(result.cleanedData);
+        onDataCleaned?.();
         toast.success(`Data cleaned successfully. Quality score: ${result.qualityScore}%`);
         onBack();
       }
@@ -258,6 +262,7 @@ export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, 
       }
 
       await updateDataAndDatabase(cleanedData);
+      onDataCleaned?.();
       toast.success(`Removed ${importedData.length - cleanedData.length} duplicate rows`);
     } catch (error) {
       console.error('Error removing duplicates:', error);
@@ -296,6 +301,7 @@ export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, 
       }
 
       await updateDataAndDatabase(cleanedData);
+      onDataCleaned?.();
       toast.success('Data types auto-corrected successfully');
     } catch (error) {
       console.error('Error auto-correcting data types:', error);

@@ -422,6 +422,12 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
         onBack={() => setShowAIFixPanel(false)}
         importedData={importedData}
         onDataUpdate={onDataUpdate}
+        onDataCleaned={() => {
+          // Re-analyze data after cleaning
+          if (importedData && importedData.length > 0) {
+            analyzeData(importedData);
+          }
+        }}
       />
     </>
   );

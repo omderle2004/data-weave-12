@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,14 +29,14 @@ serve(async (req) => {
     const dataContext = `Dataset has ${data.length} rows and ${columns.length} columns: ${columns.join(', ')}\n\nSample data:\n${dataSample.map(row => columns.map((col, i) => `${col}: ${row[i]}`).join(', ')).join('\n')}`;
 
     // Determine intent - visualization vs table vs analysis with enhanced AI
-    const intentResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const intentResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'openai/gpt-5',
         messages: [
           {
             role: 'system',
@@ -80,7 +80,9 @@ IMPORTANT: Always select the most appropriate chart type based on data character
     });
 
     if (!intentResponse.ok) {
-      throw new Error(`OpenAI Intent API error: ${intentResponse.status}`);
+      const errorText = await intentResponse.text();
+      console.error('Lovable AI Intent API error:', intentResponse.status, errorText);
+      throw new Error(`AI Intent API error: ${intentResponse.status} - ${errorText}`);
     }
 
     const intentResult = await intentResponse.json();
@@ -88,15 +90,15 @@ IMPORTANT: Always select the most appropriate chart type based on data character
 
     console.log('Intent detected:', intent);
 
-    // Generate analysis using advanced OpenAI model with enhanced context
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Generate analysis using advanced AI model with enhanced context
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'openai/gpt-5',
         messages: [
           {
             role: 'system',
@@ -169,7 +171,9 @@ VALIDATION:
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Lovable AI API error:', response.status, errorText);
+      throw new Error(`AI API error: ${response.status} - ${errorText}`);
     }
 
     const aiResponse = await response.json();

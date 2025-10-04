@@ -61,6 +61,31 @@ export function ResizableQuestionPanel({
   const handleSendMessage = async () => {
     if (!chatMessage.trim()) return;
     
+    // Validate data before sending
+    if (!data || data.length === 0) {
+      const errorResponse: AIResponse = {
+        id: Date.now().toString(),
+        type: 'text',
+        content: 'No data available to analyze. Please upload a spreadsheet first.',
+        timestamp: new Date()
+      };
+      setAiResponses(prev => [...prev, errorResponse]);
+      setChatMessage('');
+      return;
+    }
+
+    if (!columns || columns.length === 0) {
+      const errorResponse: AIResponse = {
+        id: Date.now().toString(),
+        type: 'text',
+        content: 'No columns detected in the data. Please ensure your spreadsheet has headers.',
+        timestamp: new Date()
+      };
+      setAiResponses(prev => [...prev, errorResponse]);
+      setChatMessage('');
+      return;
+    }
+    
     setIsAiLoading(true);
     
     try {
@@ -74,7 +99,12 @@ export function ResizableQuestionPanel({
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error('AI analysis error:', error);
+        throw new Error(error.message || 'Failed to analyze data');
+      }
+
+      if (!result) {
+        throw new Error('No response received from AI');
       }
 
       // Create AI response based on the analysis result
@@ -99,10 +129,11 @@ export function ResizableQuestionPanel({
       
     } catch (error) {
       console.error('Error getting AI response:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       const errorResponse: AIResponse = {
         id: Date.now().toString(),
         type: 'text',
-        content: 'I apologize, but I encountered an error while analyzing your data. Please try again.',
+        content: `I encountered an error while analyzing your data: ${errorMessage}. Please try again or rephrase your question.`,
         timestamp: new Date()
       };
       setAiResponses(prev => [...prev, errorResponse]);
@@ -180,10 +211,10 @@ export function ResizableQuestionPanel({
 
                 {/* Status */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-border shrink-0">
-                  <span className="hidden sm:inline">Model: GPT-5</span>
+                  <span className="hidden sm:inline">Model: OpenAI GPT-5</span>
                   <span className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
-                    Ready
+                    <div className={`w-1.5 h-1.5 rounded-full ${isAiLoading ? 'bg-yellow-500 animate-pulse' : 'bg-success'}`}></div>
+                    {isAiLoading ? 'Analyzing...' : 'Ready'}
                   </span>
                 </div>
               </div>

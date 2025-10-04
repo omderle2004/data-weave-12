@@ -228,8 +228,12 @@ export function AIFixOptionsPanel({ isOpen, onBack, importedData, onDataUpdate, 
       if (error) throw error;
 
       if (result.success && result.cleanedData) {
-        onDataUpdate(result.cleanedData);
+        // First, save to database permanently
+        await updateDataAndDatabase(result.cleanedData);
+        
+        // Then trigger quality analysis refresh
         onDataCleaned?.();
+        
         toast.success(`Data cleaned successfully. Quality score: ${result.qualityScore}%`);
         onBack();
       }

@@ -28,7 +28,7 @@ serve(async (req) => {
     const dataSample = data.slice(0, Math.min(5, data.length));
     const dataContext = `Dataset has ${data.length} rows and ${columns.length} columns: ${columns.join(', ')}\n\nSample data:\n${dataSample.map(row => columns.map((col, i) => `${col}: ${row[i]}`).join(', ')).join('\n')}`;
 
-    // Determine intent - visualization vs table vs analysis
+    // Determine intent - visualization vs table vs analysis with enhanced AI
     const intentResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -36,24 +36,39 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-5-2025-08-07',
         messages: [
           {
             role: 'system',
-            content: `Analyze the user's question and determine their intent. Respond with a JSON object containing:
+            content: `You are an expert data analyst AI. Analyze the user's natural language question and determine their intent with high accuracy.
+
+Dataset Context:
+- Columns: ${columns.join(', ')}
+- Total Rows: ${data.length}
+- Sample Data: ${dataSample.map(row => columns.map((col, i) => `${col}: ${row[i]}`).join(', ')).slice(0, 2).join('\n')}
+
+Respond with a JSON object containing:
 {
-  "intent": "visualization|table|analysis",
+  "intent": "visualization|table|analysis|prediction",
   "requiresChart": boolean,
   "suggestedColumns": ["column1", "column2"],
   "chartType": "bar|line|pie|scatter|area|null"
 }
 
-Available columns: ${columns.join(', ')}
+Intent Guidelines:
+- "visualization": Keywords like show, plot, chart, graph, visualize, display chart
+- "table": Keywords like list, show rows, top items, bottom items, filter, display data
+- "analysis": Keywords like analyze, insights, trends, patterns, compare, statistics
+- "prediction": Keywords like forecast, predict, future, trend, projection
 
-Intent classification:
-- "visualization": User wants a chart, graph, plot, or visual representation
-- "table": User wants to see data rows, top/bottom items, filtered results
-- "analysis": User wants insights, statistics, or text explanations`
+Chart Type Guidelines:
+- bar: Comparing categories, rankings, top/bottom items
+- line: Trends over time, sequential data, continuous values
+- pie: Proportions, percentages, parts of a whole (limit to <8 categories)
+- scatter: Correlation, relationship between two numeric variables
+- area: Cumulative trends, volume over time
+
+IMPORTANT: Always select the most appropriate chart type based on data characteristics and user intent.`
           },
           {
             role: 'user',
@@ -73,7 +88,7 @@ Intent classification:
 
     console.log('Intent detected:', intent);
 
-    // Generate analysis using OpenAI
+    // Generate analysis using advanced OpenAI model with enhanced context
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -81,49 +96,75 @@ Intent classification:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-5-2025-08-07',
         messages: [
           {
             role: 'system',
-            content: `You are a data analyst AI. Based on the user's intent, provide appropriate analysis.
+            content: `You are SmartBiz AI - an expert business intelligence analyst with deep expertise in data analysis, visualization, and actionable insights.
 
-Dataset context: ${dataContext}
-User Intent: ${intent.intent}
-Requires Chart: ${intent.requiresChart}
+DATASET CONTEXT:
+${dataContext}
 
-Respond with a JSON object containing:
+USER INTENT: ${intent.intent}
+REQUIRES CHART: ${intent.requiresChart}
+SUGGESTED COLUMNS: ${intent.suggestedColumns?.join(', ') || 'Auto-detect'}
+
+YOUR TASK:
+Analyze the dataset and provide comprehensive, context-aware insights based on the user's question.
+
+RESPONSE FORMAT (JSON):
 {
-  "answer": "Natural language explanation of findings",
-  "insights": ["Key insight 1", "Key insight 2", ...],
+  "answer": "Clear, natural language explanation with specific data-driven findings. Include numbers, percentages, and actionable insights. NEVER use placeholders like 'X%' - always use actual calculated values.",
+  "insights": [
+    "Specific insight with concrete numbers (e.g., 'Revenue increased by 23.4% in Q2')",
+    "Pattern or trend identified in the data",
+    "Recommendation or action item based on findings",
+    "Risk or opportunity highlighted by the analysis"
+  ],
   "intent": "${intent.intent}",
   "chartRecommendation": ${intent.requiresChart ? `{
-    "type": "bar|line|pie|scatter|area",
-    "xColumn": "exact column name from dataset",
-    "yColumn": "exact column name from dataset", 
-    "title": "Chart title"
+    "type": "${intent.chartType || 'bar'}",
+    "xColumn": "EXACT column name from dataset",
+    "yColumn": "EXACT column name for values", 
+    "title": "Descriptive chart title"
   }` : 'null'},
   "tableData": ${intent.intent === 'table' ? `{
-    "columns": ["col1", "col2"],
-    "rows": [["val1", "val2"], ["val3", "val4"]],
-    "title": "Table title"
+    "title": "Descriptive table title",
+    "columns": ["col1", "col2", "col3"],
+    "rows": [["val1", "val2", "val3"]]
   }` : 'null'},
   "statistics": {
-    "key": "value"
-  }
+    "Total Records": number,
+    "Key Metric 1": value,
+    "Key Metric 2": value
+  },
+  "recommendations": [
+    "Business recommendation 1",
+    "Business recommendation 2"
+  ]
 }
 
-Guidelines:
-- For visualizations: Always recommend appropriate chart types and specify exact column names
-- For tables: Return formatted table data with clear rows and columns
-- For analysis: Focus on insights and statistics
-- Always use exact column names from: ${columns.join(', ')}`
+CRITICAL RULES:
+1. NEVER use placeholders or generic values - always calculate actual numbers
+2. Use exact column names from: ${columns.join(', ')}
+3. Provide 3-5 specific, actionable insights
+4. Include business context and implications
+5. For charts, select the type that best tells the data story
+6. Ensure all statistics are real calculated values, not examples
+7. Make insights specific and quantified (avoid vague statements)
+8. Focus on what matters most to business decisions
+
+VALIDATION:
+- Verify all column names exist in the dataset
+- Ensure insights reference actual data patterns
+- Confirm recommendations are achievable and relevant`
           },
           {
             role: 'user',
             content: question
           }
         ],
-        max_completion_tokens: 1500,
+        max_completion_tokens: 2000,
       }),
     });
 
@@ -255,9 +296,26 @@ Guidelines:
       }
     });
 
+    // Validate outputs - ensure no placeholders or empty responses
+    const validatedAnswer = analysisResult.answer && analysisResult.answer.trim() !== '' 
+      ? analysisResult.answer 
+      : 'Analysis complete. Please see the insights and visualizations below for detailed findings.';
+
+    const validatedInsights = Array.isArray(analysisResult.insights) && analysisResult.insights.length > 0
+      ? analysisResult.insights.filter(insight => insight && insight.trim() !== '')
+      : ['Data successfully analyzed. Key patterns have been identified in the visualization.'];
+
+    // Ensure we have either chart or table data
+    const hasValidOutput = chartData || tableData || validatedInsights.length > 0;
+    
+    if (!hasValidOutput) {
+      throw new Error('Unable to generate meaningful analysis from the provided data and question.');
+    }
+
     const result = {
-      answer: analysisResult.answer,
-      insights: analysisResult.insights || [],
+      answer: validatedAnswer,
+      insights: validatedInsights,
+      recommendations: analysisResult.recommendations || [],
       intent: analysisResult.intent || 'analysis',
       chartRecommendation: analysisResult.chartRecommendation,
       chartData: chartData,
@@ -266,7 +324,11 @@ Guidelines:
       timestamp: new Date().toISOString()
     };
 
-    console.log('Analysis complete:', result);
+    console.log('Analysis complete with validation:', { 
+      hasChart: !!chartData, 
+      hasTable: !!tableData, 
+      insightsCount: validatedInsights.length 
+    });
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

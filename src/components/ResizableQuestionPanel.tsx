@@ -24,6 +24,7 @@ interface AIResponse {
     rows: string[][];
   };
   intent?: string;
+  recommendations?: string[];
 }
 
 interface ResizableQuestionPanelProps {
@@ -90,7 +91,8 @@ export function ResizableQuestionPanel({
         insights: result.insights,
         statistics: result.statistics,
         tableData: result.tableData,
-        intent: result.intent
+        intent: result.intent,
+        recommendations: result.recommendations
       };
 
       setAiResponses(prev => [...prev, newResponse]);
@@ -178,7 +180,7 @@ export function ResizableQuestionPanel({
 
                 {/* Status */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-border shrink-0">
-                  <span className="hidden sm:inline">Model: GPT-4</span>
+                  <span className="hidden sm:inline">Model: GPT-5</span>
                   <span className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
                     Ready

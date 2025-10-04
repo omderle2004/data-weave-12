@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Code, BarChart3, FileText, Image, TrendingUp, Info } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
 interface AIResponse {
   id: string;
@@ -21,6 +21,7 @@ interface AIResponse {
     rows: string[][];
   };
   intent?: string;
+  recommendations?: string[];
 }
 
 interface AIResponsePanelProps {
@@ -148,90 +149,206 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
                       </div>
                     )}
 
-                    {/* Display chart if available */}
+                    {/* Display chart if available - Enhanced with colors, legends, and interactivity */}
                     {response.chartData && response.chartType && (
-                      <div className="mb-3">
-                        <div className="text-xs font-medium text-primary mb-2">{response.chartTitle}</div>
-                        <ScrollArea className="h-64 w-full">
-                          <div className="min-w-full h-64">
+                      <div className="mb-3 bg-gradient-to-br from-blue-50/50 to-purple-50/50 p-3 rounded-lg border border-blue-100">
+                        <div className="text-sm font-semibold text-primary mb-3 flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4" />
+                          {response.chartTitle}
+                        </div>
+                        <ScrollArea className="h-80 w-full">
+                          <div className="min-w-full h-80">
                             <ResponsiveContainer width="100%" height="100%">
                               {response.chartType === 'bar' ? (
-                                <BarChart data={response.chartData}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
-                                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                  <YAxis tick={{ fontSize: 10 }} />
-                                  <Tooltip 
-                                    contentStyle={{ 
-                                      backgroundColor: 'hsl(var(--card))', 
-                                      border: '1px solid hsl(var(--border))',
-                                      borderRadius: '6px'
-                                    }} 
+                                <BarChart data={response.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                  <defs>
+                                    <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.9}/>
+                                      <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.6}/>
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.15)" />
+                                  <XAxis 
+                                    dataKey="name" 
+                                    tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={80}
                                   />
-                                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
-                                </BarChart>
-                              ) : response.chartType === 'line' || response.chartType === 'area' ? (
-                                <LineChart data={response.chartData}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
-                                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                  <YAxis tick={{ fontSize: 10 }} />
+                                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }} />
                                   <Tooltip 
                                     contentStyle={{ 
                                       backgroundColor: 'hsl(var(--card))', 
-                                      border: '1px solid hsl(var(--border))',
-                                      borderRadius: '6px'
-                                    }} 
+                                      border: '2px solid hsl(217, 91%, 60%)',
+                                      borderRadius: '8px',
+                                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                    }}
+                                    cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
+                                  />
+                                  <Legend 
+                                    wrapperStyle={{ paddingTop: '10px' }}
+                                    iconType="circle"
+                                  />
+                                  <Bar 
+                                    dataKey="value" 
+                                    fill="url(#colorBar)" 
+                                    radius={[8, 8, 0, 0]}
+                                    name="Value"
+                                  />
+                                </BarChart>
+                              ) : response.chartType === 'line' ? (
+                                <LineChart data={response.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                  <defs>
+                                    <linearGradient id="colorLine" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.8}/>
+                                      <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0}/>
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.15)" />
+                                  <XAxis 
+                                    dataKey="name" 
+                                    tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={80}
+                                  />
+                                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }} />
+                                  <Tooltip 
+                                    contentStyle={{ 
+                                      backgroundColor: 'hsl(var(--card))', 
+                                      border: '2px solid hsl(142, 76%, 36%)',
+                                      borderRadius: '8px',
+                                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                    }}
+                                    cursor={{ strokeDasharray: '3 3' }}
+                                  />
+                                  <Legend 
+                                    wrapperStyle={{ paddingTop: '10px' }}
+                                    iconType="circle"
                                   />
                                   <Line 
                                     type="monotone" 
                                     dataKey="value" 
-                                    stroke="hsl(var(--primary))" 
+                                    stroke="hsl(142, 76%, 36%)" 
                                     strokeWidth={3}
-                                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                                    activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                                    dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 2, r: 5, fillOpacity: 1 }}
+                                    activeDot={{ r: 8, fill: 'hsl(142, 76%, 36%)', stroke: 'white', strokeWidth: 2 }}
+                                    name="Value"
                                   />
                                 </LineChart>
+                              ) : response.chartType === 'area' ? (
+                                <AreaChart data={response.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                  <defs>
+                                    <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="hsl(271, 81%, 56%)" stopOpacity={0.8}/>
+                                      <stop offset="95%" stopColor="hsl(271, 81%, 56%)" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.15)" />
+                                  <XAxis 
+                                    dataKey="name" 
+                                    tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={80}
+                                  />
+                                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }} />
+                                  <Tooltip 
+                                    contentStyle={{ 
+                                      backgroundColor: 'hsl(var(--card))', 
+                                      border: '2px solid hsl(271, 81%, 56%)',
+                                      borderRadius: '8px',
+                                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                    }}
+                                  />
+                                  <Legend 
+                                    wrapperStyle={{ paddingTop: '10px' }}
+                                    iconType="circle"
+                                  />
+                                  <Area 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke="hsl(271, 81%, 56%)" 
+                                    strokeWidth={3}
+                                    fill="url(#colorArea)"
+                                    name="Value"
+                                  />
+                                </AreaChart>
                               ) : response.chartType === 'pie' ? (
                                 <PieChart>
                                   <Pie
                                     data={response.chartData}
                                     cx="50%"
                                     cy="50%"
-                                    labelLine={false}
-                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                    outerRadius={80}
+                                    labelLine={{
+                                      stroke: 'hsl(var(--foreground))',
+                                      strokeWidth: 1
+                                    }}
+                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                                    outerRadius={100}
                                     fill="#8884d8"
                                     dataKey="value"
                                     stroke="hsl(var(--background))"
                                     strokeWidth={2}
                                   >
                                     {response.chartData.map((entry, index) => {
-                                      const colors = [
-                                        'hsl(var(--primary))',
-                                        'hsl(220, 70%, 50%)',
-                                        'hsl(142, 76%, 36%)',
-                                        'hsl(25, 95%, 53%)',
-                                        'hsl(271, 81%, 56%)',
-                                        'hsl(347, 77%, 50%)',
-                                        'hsl(43, 96%, 56%)',
-                                        'hsl(197, 71%, 52%)'
+                                      const vibrantColors = [
+                                        'hsl(217, 91%, 60%)',  // Vibrant blue
+                                        'hsl(142, 76%, 36%)',  // Vibrant green
+                                        'hsl(25, 95%, 53%)',   // Vibrant orange
+                                        'hsl(271, 81%, 56%)',  // Vibrant purple
+                                        'hsl(347, 77%, 50%)',  // Vibrant red
+                                        'hsl(43, 96%, 56%)',   // Vibrant yellow
+                                        'hsl(197, 71%, 52%)',  // Vibrant cyan
+                                        'hsl(340, 82%, 52%)',  // Vibrant pink
+                                        'hsl(162, 63%, 41%)',  // Vibrant teal
+                                        'hsl(24, 100%, 50%)'   // Vibrant deep orange
                                       ];
                                       return (
-                                        <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                        <Cell 
+                                          key={`cell-${index}`} 
+                                          fill={vibrantColors[index % vibrantColors.length]}
+                                          style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))' }}
+                                        />
                                       );
                                     })}
                                   </Pie>
                                   <Tooltip 
                                     contentStyle={{ 
                                       backgroundColor: 'hsl(var(--card))', 
-                                      border: '1px solid hsl(var(--border))',
-                                      borderRadius: '6px'
+                                      border: '2px solid hsl(217, 91%, 60%)',
+                                      borderRadius: '8px',
+                                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                                     }} 
+                                  />
+                                  <Legend 
+                                    verticalAlign="bottom" 
+                                    height={36}
+                                    iconType="circle"
                                   />
                                 </PieChart>
                               ) : null}
                             </ResponsiveContainer>
                           </div>
                         </ScrollArea>
+                      </div>
+                    )}
+
+                    {/* Display recommendations if available */}
+                    {response.recommendations && response.recommendations.length > 0 && (
+                      <div className="mb-3">
+                        <div className="flex items-center gap-1 mb-2">
+                          <TrendingUp className="h-3 w-3 text-green-600" />
+                          <span className="text-xs font-medium text-green-600">Recommendations</span>
+                        </div>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          {response.recommendations.map((rec, idx) => (
+                            <li key={idx} className="flex items-start gap-1">
+                              <span className="text-green-600">→</span>
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     )}
 

@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { AIFixOptionsPanel } from './AIFixOptionsPanel';
 
 interface DataPreprocessingModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
   const [hasData, setHasData] = useState(false);
   const [isFixingData, setIsFixingData] = useState(false);
   const [dataTypeIssueDetails, setDataTypeIssueDetails] = useState<string[]>([]);
+  const [showAIFixPanel, setShowAIFixPanel] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -152,7 +154,7 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
     }
   };
 
-  const handleFixWithAI = async () => {
+  const handleFixWithAI = () => {
     if (!importedData || !analysisResults) {
       toast.error('No data available to fix');
       return;
@@ -168,46 +170,8 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
       return;
     }
 
-    setIsFixingData(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke('clean-data-with-ai', {
-        body: { 
-          data: importedData,
-          analysis: analysisResults
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (result?.success && result?.cleanedData) {
-        onDataUpdate?.(result.cleanedData);
-        toast.success('Data successfully cleaned with AI');
-        
-        // Re-analyze the cleaned data
-        analyzeData(result.cleanedData);
-        
-        if (result.summary) {
-          // Format the summary for better readability
-          const summaryText = typeof result.summary === 'object' 
-            ? `Rows removed: ${result.summary.rowsRemoved || 0}, Values filled: ${result.summary.valuesFilled || 0}, Formats standardized: ${result.summary.formatsStandardized || 0}`
-            : result.summary;
-          toast.info(`Changes made: ${summaryText}`);
-        }
-        
-        if (result.qualityScore) {
-          toast.success(`New quality score: ${result.qualityScore}%`);
-        }
-      } else {
-        toast.error('No cleaned data returned from AI');
-      }
-    } catch (error) {
-      console.error('AI data cleaning error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to clean data with AI');
-    } finally {
-      setIsFixingData(false);
-    }
+    // Open the AI Fix Options Panel
+    setShowAIFixPanel(true);
   };
 
   const getDataInsights = () => {
@@ -294,161 +258,169 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
-        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <DialogTitle className="text-xl font-semibold">Data Preprocessing & Quality Analysis</DialogTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            className="h-8"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Analysis
-          </Button>
-        </DialogHeader>
-        
-        <div className="flex-1 overflow-auto space-y-6">
-          {/* Data Quality Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                   <div className="p-2 bg-orange-100 rounded-lg">
-                     <AlertTriangle className="h-5 w-5 text-orange-600" />
-                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {hasData && analysisResults ? analysisResults.missingValues : 0}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Missing Values</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                   <div className="p-2 bg-red-100 rounded-lg">
-                     <XCircle className="h-5 w-5 text-red-600" />
-                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {hasData && analysisResults ? analysisResults.duplicateRows : 0}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Duplicate Records</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                   <div className="p-2 bg-yellow-100 rounded-lg">
-                     <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {hasData && analysisResults ? analysisResults.dataTypeIssues : 0}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Data Type Issues</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                   <div className="p-2 bg-green-100 rounded-lg">
-                     <CheckCircle className="h-5 w-5 text-green-600" />
-                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">{qualityScore}%</p>
-                    <p className="text-sm text-muted-foreground">Data Quality Score</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-
-          {/* AI Fix Section - Always visible */}
-          {hasData && analysisResults && (
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+          <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <DialogTitle className="text-xl font-semibold">Data Preprocessing & Quality Analysis</DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="h-8"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Analysis
+            </Button>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto space-y-6">
+            {/* Data Quality Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Wand2 className="h-5 w-5 text-blue-600" />
-                    </div>
+                     <div className="p-2 bg-orange-100 rounded-lg">
+                       <AlertTriangle className="h-5 w-5 text-orange-600" />
+                     </div>
                     <div>
-                      <h3 className="font-medium text-blue-900">AI-Powered Data Cleaning</h3>
-                      <p className="text-sm text-blue-700">
-                        {(analysisResults.missingValues > 0 || analysisResults.duplicateRows > 0 || analysisResults.dataTypeIssues > 0)
-                          ? "Let our AI automatically fix data quality issues"
-                          : "Your data looks great! Click to confirm quality"}
+                      <p className="text-2xl font-bold">
+                        {hasData && analysisResults ? analysisResults.missingValues : 0}
                       </p>
+                      <p className="text-sm text-muted-foreground">Missing Values</p>
                     </div>
                   </div>
-                  <Button 
-                    onClick={handleFixWithAI}
-                    disabled={isFixingData || (analysisResults.missingValues === 0 && analysisResults.duplicateRows === 0 && analysisResults.dataTypeIssues === 0)}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
-                  >
-                    {isFixingData ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Fixing Data...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="h-4 w-4 mr-2" />
-                        Fix with AI
-                      </>
-                    )}
-                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                     <div className="p-2 bg-red-100 rounded-lg">
+                       <XCircle className="h-5 w-5 text-red-600" />
+                     </div>
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {hasData && analysisResults ? analysisResults.duplicateRows : 0}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Duplicate Records</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                     <div className="p-2 bg-yellow-100 rounded-lg">
+                       <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                     </div>
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {hasData && analysisResults ? analysisResults.dataTypeIssues : 0}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Data Type Issues</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                     <div className="p-2 bg-green-100 rounded-lg">
+                       <CheckCircle className="h-5 w-5 text-green-600" />
+                     </div>
+                    <div>
+                      <p className="text-2xl font-bold">{qualityScore}%</p>
+                      <p className="text-sm text-muted-foreground">Data Quality Score</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+
+            {/* AI Fix Section - Always visible */}
+            {hasData && analysisResults && (
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Wand2 className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-blue-900">AI-Powered Data Cleaning</h3>
+                        <p className="text-sm text-blue-700">
+                          {(analysisResults.missingValues > 0 || analysisResults.duplicateRows > 0 || analysisResults.dataTypeIssues > 0)
+                            ? "Let our AI automatically fix data quality issues"
+                            : "Your data looks great! Click to confirm quality"}
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={handleFixWithAI}
+                      disabled={isFixingData || (analysisResults.missingValues === 0 && analysisResults.duplicateRows === 0 && analysisResults.dataTypeIssues === 0)}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
+                    >
+                      {isFixingData ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Fixing Data...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="h-4 w-4 mr-2" />
+                          Fix with AI
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detailed Data Insights */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="text-base font-medium">Data Quality Insights</CardTitle>
+                <Database className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {getDataInsights().map((insight, index) => (
+                    <div key={index} className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg">
+                      <insight.icon className={`h-5 w-5 mt-0.5 ${getSeverityColor(insight.severity)}`} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{insight.title}</h4>
+                          <Badge variant={getSeverityBadge(insight.severity) as any} className="h-5 text-xs">
+                            {insight.severity}
+                          </Badge>
+                          {insight.count > 0 && (
+                            <Badge variant="outline" className="h-5 text-xs">
+                              {insight.count} issues
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{insight.description}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Detailed Data Insights */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-base font-medium">Data Quality Insights</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {getDataInsights().map((insight, index) => (
-                  <div key={index} className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg">
-                    <insight.icon className={`h-5 w-5 mt-0.5 ${getSeverityColor(insight.severity)}`} />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium">{insight.title}</h4>
-                        <Badge variant={getSeverityBadge(insight.severity) as any} className="h-5 text-xs">
-                          {insight.severity}
-                        </Badge>
-                        {insight.count > 0 && (
-                          <Badge variant="outline" className="h-5 text-xs">
-                            {insight.count} issues
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{insight.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* AI Fix Options Panel */}
+      <AIFixOptionsPanel 
+        isOpen={showAIFixPanel} 
+        onBack={() => setShowAIFixPanel(false)} 
+      />
+    </>
   );
 }

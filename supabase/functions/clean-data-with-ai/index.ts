@@ -113,7 +113,8 @@ function analyzeDataQuality(data: string[][]) {
   data.forEach((row, rowIndex) => {
     // Check for missing values
     row.forEach(cell => {
-      if (!cell || cell.trim() === '' || cell.toLowerCase() === 'null' || cell.toLowerCase() === 'n/a') {
+      const cellStr = String(cell || '');
+      if (!cell || cellStr.trim() === '' || cellStr.toLowerCase() === 'null' || cellStr.toLowerCase() === 'n/a') {
         issues.missingValues++;
       }
     });
@@ -129,8 +130,9 @@ function analyzeDataQuality(data: string[][]) {
     // Check for data type inconsistencies (basic)
     row.forEach((cell, colIndex) => {
       if (rowIndex > 0 && cell) { // Skip header row
+        const cellStr = String(cell);
         // Simple date format check
-        if (cell.includes('/') && cell.includes('-')) {
+        if (cellStr.includes('/') && cellStr.includes('-')) {
           issues.inconsistentFormats++;
         }
       }
@@ -232,9 +234,13 @@ function fallbackDataCleaning(data: string[][], analysis: any) {
     if (rowIndex === 0) return; // Skip header
 
     row.forEach((cell, colIndex) => {
-      if (!cell || cell.trim() === '' || cell.toLowerCase() === 'null') {
+      const cellStr = String(cell || '');
+      if (!cell || cellStr.trim() === '' || cellStr.toLowerCase() === 'null') {
         // Simple fill strategy - use "N/A" for text, 0 for numbers
-        const column = uniqueData.map(r => r[colIndex]).filter(c => c && c.trim());
+        const column = uniqueData.map(r => r[colIndex]).filter(c => {
+          const cStr = String(c || '');
+          return c && cStr.trim();
+        });
         const isNumeric = column.some(c => !isNaN(Number(c)));
         
         uniqueData[rowIndex][colIndex] = isNumeric ? '0' : 'N/A';
@@ -255,7 +261,8 @@ function calculateQualityScore(data: string[][]) {
   data.forEach(row => {
     row.forEach(cell => {
       totalCells++;
-      if (cell && cell.trim() !== '' && cell.toLowerCase() !== 'null' && cell.toLowerCase() !== 'n/a') {
+      const cellStr = String(cell || '');
+      if (cell && cellStr.trim() !== '' && cellStr.toLowerCase() !== 'null' && cellStr.toLowerCase() !== 'n/a') {
         goodCells++;
       }
     });

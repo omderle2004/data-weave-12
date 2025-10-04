@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,14 +29,14 @@ serve(async (req) => {
     const dataContext = `Dataset has ${data.length} rows and ${columns.length} columns: ${columns.join(', ')}\n\nSample data:\n${dataSample.map(row => columns.map((col, i) => `${col}: ${row[i]}`).join(', ')).join('\n')}`;
 
     // Determine intent - visualization vs table vs analysis with enhanced AI
-    const intentResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const intentResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -75,30 +75,49 @@ IMPORTANT: Always select the most appropriate chart type based on data character
             content: question
           }
         ],
-        max_completion_tokens: 300,
+        max_tokens: 300,
       }),
     });
 
     if (!intentResponse.ok) {
       const errorText = await intentResponse.text();
-      console.error('Lovable AI Intent API error:', intentResponse.status, errorText);
-      throw new Error(`AI Intent API error: ${intentResponse.status} - ${errorText}`);
+      console.error('OpenAI Intent API error:', intentResponse.status, errorText);
+      throw new Error(`OpenAI Intent API error: ${intentResponse.status}`);
     }
 
     const intentResult = await intentResponse.json();
-    const intent = JSON.parse(intentResult.choices[0].message.content);
+    let intent;
+    
+    try {
+      const contentText = intentResult.choices[0].message.content.trim();
+      console.log('Raw intent content:', contentText);
+      
+      // Remove markdown code blocks if present
+      const cleanedContent = contentText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      intent = JSON.parse(cleanedContent);
+    } catch (parseError) {
+      console.error('Failed to parse intent JSON:', parseError);
+      console.error('Raw content:', intentResult.choices[0].message.content);
+      // Fallback to default intent
+      intent = {
+        intent: 'visualization',
+        requiresChart: true,
+        suggestedColumns: [columns[0], columns[1]],
+        chartType: 'bar'
+      };
+    }
 
     console.log('Intent detected:', intent);
 
     // Generate analysis using advanced AI model with enhanced context
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -166,18 +185,32 @@ VALIDATION:
             content: question
           }
         ],
-        max_completion_tokens: 2000,
+        max_tokens: 2000,
+        temperature: 0.7,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI API error:', response.status, errorText);
-      throw new Error(`AI API error: ${response.status} - ${errorText}`);
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
-    const analysisResult = JSON.parse(aiResponse.choices[0].message.content);
+    let analysisResult;
+    
+    try {
+      const contentText = aiResponse.choices[0].message.content.trim();
+      console.log('Raw analysis content preview:', contentText.substring(0, 200));
+      
+      // Remove markdown code blocks if present
+      const cleanedContent = contentText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      analysisResult = JSON.parse(cleanedContent);
+    } catch (parseError) {
+      console.error('Failed to parse analysis JSON:', parseError);
+      console.error('Raw content:', aiResponse.choices[0].message.content);
+      throw new Error('Failed to parse AI response. Please try rephrasing your question.');
+    }
 
     // Process the data based on the AI's recommendations
     let processedData = null;

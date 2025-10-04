@@ -211,7 +211,7 @@ export function ResizableQuestionPanel({
 
                 {/* Status */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-border shrink-0">
-                  <span className="hidden sm:inline">Model: OpenAI GPT-5</span>
+                  <span className="hidden sm:inline">Model: OpenAI GPT-4o</span>
                   <span className="flex items-center gap-1">
                     <div className={`w-1.5 h-1.5 rounded-full ${isAiLoading ? 'bg-yellow-500 animate-pulse' : 'bg-success'}`}></div>
                     {isAiLoading ? 'Analyzing...' : 'Ready'}

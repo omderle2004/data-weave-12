@@ -24,9 +24,20 @@ serve(async (req) => {
     
     console.log('Received analysis request:', { question, dataRows: data.length, columns });
 
-    // Create a sample of the data for context (first 5 rows)
-    const dataSample = data.slice(0, Math.min(5, data.length));
-    const dataContext = `Dataset has ${data.length} rows and ${columns.length} columns: ${columns.join(', ')}\n\nSample data:\n${dataSample.map(row => columns.map((col, i) => `${col}: ${row[i]}`).join(', ')).join('\n')}`;
+    // Validate data before processing
+    if (!data || data.length < 2) {
+      return new Response(JSON.stringify({ 
+        error: "Unable to generate this analysis. Please check if your dataset contains the required data.",
+        answer: "Your dataset appears to be empty or contains insufficient data. Please upload a valid dataset with at least one row of data."
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create a sample of the data for context (first 10 rows for better understanding)
+    const dataSample = data.slice(0, Math.min(10, data.length));
+    const dataContext = `Dataset has ${data.length} rows and ${columns.length} columns: ${columns.join(', ')}\n\nSample data (first 10 rows):\n${dataSample.map(row => columns.map((col, i) => `${col}: ${row[i]}`).join(', ')).join('\n')}`;
 
     // Determine intent - visualization vs table vs analysis
     const intentResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -40,7 +51,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Analyze the user's question and determine their intent. Respond with a JSON object containing:
+            content: `You are a strict data analyst. Analyze the user's question and determine their intent based ONLY on the available dataset.
+
+CRITICAL: Only use columns that exist in this dataset: ${columns.join(', ')}
+
+Respond with ONLY a valid JSON object (no markdown, no code blocks):
 {
   "intent": "visualization|table|analysis",
   "requiresChart": boolean,
@@ -48,12 +63,12 @@ serve(async (req) => {
   "chartType": "bar|line|pie|scatter|area|null"
 }
 
-Available columns: ${columns.join(', ')}
-
 Intent classification:
 - "visualization": User wants a chart, graph, plot, or visual representation
-- "table": User wants to see data rows, top/bottom items, filtered results
-- "analysis": User wants insights, statistics, or text explanations`
+- "table": User wants to see data rows, top/bottom items, filtered results  
+- "analysis": User wants insights, statistics, or text explanations
+
+If the required columns don't exist in the dataset, set requiresChart to false.`
           },
           {
             role: 'user',
@@ -69,7 +84,14 @@ Intent classification:
     }
 
     const intentResult = await intentResponse.json();
-    const intent = JSON.parse(intentResult.choices[0].message.content);
+    let intentContent = intentResult.choices[0].message.content.trim();
+    
+    // Clean markdown code blocks if present
+    if (intentContent.startsWith('```')) {
+      intentContent = intentContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    }
+    
+    const intent = JSON.parse(intentContent);
 
     console.log('Intent detected:', intent);
 
@@ -85,54 +107,92 @@ Intent classification:
         messages: [
           {
             role: 'system',
-            content: `You are a data analyst AI. Based on the user's intent, provide appropriate analysis.
+            content: `You are a virtual data analyst AI for SmartBiz. Your role is to provide ACCURATE, DATA-DRIVEN insights.
+
+CRITICAL RULES:
+1. ALL analysis must come STRICTLY from the uploaded dataset - NO fabricated or placeholder data
+2. ONLY use column names that exist in the dataset: ${columns.join(', ')}
+3. If data is insufficient for the query, explicitly state it
+4. Always provide actionable recommendations based on findings
+5. Validate all calculations against actual data values
 
 Dataset context: ${dataContext}
 User Intent: ${intent.intent}
 Requires Chart: ${intent.requiresChart}
 
-Respond with a JSON object containing:
+Respond with ONLY a valid JSON object (no markdown, no code blocks):
 {
-  "answer": "Natural language explanation of findings",
-  "insights": ["Key insight 1", "Key insight 2", ...],
+  "answer": "Clear explanation of findings based on ACTUAL data",
+  "insights": ["Data-driven insight 1", "Data-driven insight 2", "Data-driven insight 3"],
+  "recommendations": ["Actionable recommendation 1", "Actionable recommendation 2"],
   "intent": "${intent.intent}",
   "chartRecommendation": ${intent.requiresChart ? `{
     "type": "bar|line|pie|scatter|area",
-    "xColumn": "exact column name from dataset",
-    "yColumn": "exact column name from dataset", 
-    "title": "Chart title"
+    "xColumn": "EXACT column name from dataset",
+    "yColumn": "EXACT column name from dataset", 
+    "title": "Descriptive chart title"
   }` : 'null'},
   "tableData": ${intent.intent === 'table' ? `{
     "columns": ["col1", "col2"],
-    "rows": [["val1", "val2"], ["val3", "val4"]],
+    "rows": [["val1", "val2"]],
     "title": "Table title"
   }` : 'null'},
   "statistics": {
-    "key": "value"
+    "relevant_key": "calculated_value"
   }
 }
 
 Guidelines:
-- For visualizations: Always recommend appropriate chart types and specify exact column names
-- For tables: Return formatted table data with clear rows and columns
-- For analysis: Focus on insights and statistics
-- Always use exact column names from: ${columns.join(', ')}`
+- For visualizations: Recommend chart type based on data relationships
+- For tables: Show actual data rows with relevant columns
+- For analysis: Extract real patterns and trends from the data
+- Always include 2-3 actionable recommendations
+- If required columns don't exist, state: "Unable to generate this analysis. Please check if your dataset contains the required columns."`
           },
           {
             role: 'user',
             content: question
           }
         ],
-        max_completion_tokens: 1500,
+        max_completion_tokens: 2000,
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
-    const analysisResult = JSON.parse(aiResponse.choices[0].message.content);
+    let analysisContent = aiResponse.choices[0].message.content.trim();
+    
+    // Clean markdown code blocks if present
+    if (analysisContent.startsWith('```')) {
+      analysisContent = analysisContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    }
+    
+    let analysisResult;
+    try {
+      analysisResult = JSON.parse(analysisContent);
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', analysisContent);
+      throw new Error('Unable to parse AI analysis. Please try rephrasing your question.');
+    }
+    
+    // Validate that AI didn't hallucinate column names
+    if (analysisResult.chartRecommendation) {
+      const { xColumn, yColumn } = analysisResult.chartRecommendation;
+      if (!columns.includes(xColumn) || (yColumn && !columns.includes(yColumn))) {
+        return new Response(JSON.stringify({ 
+          error: "Unable to generate this analysis. Please check if your dataset contains the required columns.",
+          answer: `The requested columns (${xColumn}, ${yColumn}) don't exist in your dataset. Available columns: ${columns.join(', ')}`
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // Process the data based on the AI's recommendations
     let processedData = null;
@@ -258,15 +318,17 @@ Guidelines:
     const result = {
       answer: analysisResult.answer,
       insights: analysisResult.insights || [],
+      recommendations: analysisResult.recommendations || [],
       intent: analysisResult.intent || 'analysis',
       chartRecommendation: analysisResult.chartRecommendation,
       chartData: chartData,
       tableData: tableData,
       statistics: formattedStatistics,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      success: true
     };
 
-    console.log('Analysis complete:', result);
+    console.log('SmartBiz Analysis complete:', result);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -276,7 +338,8 @@ Guidelines:
     console.error('Error in ai-data-analysis function:', error);
     return new Response(JSON.stringify({ 
       error: error.message,
-      answer: "I apologize, but I encountered an error while analyzing your data. Please try rephrasing your question or check your data format."
+      answer: "Unable to generate this analysis. Please check if your dataset contains the required columns or try rephrasing your question.",
+      success: false
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

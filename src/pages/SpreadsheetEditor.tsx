@@ -1017,11 +1017,21 @@ export default function SpreadsheetEditor() {
 
             if (error) throw error;
 
-            toast.success('Your report has been sent successfully.', { id: loadingToast });
-            setShowEmailDialog(false);
-          } catch (error) {
+            // Check if the response contains an error about domain verification
+            if (data?.emailResponse?.error) {
+              const errorMsg = data.emailResponse.error.message || '';
+              if (errorMsg.includes('verify a domain') || errorMsg.includes('testing emails')) {
+                toast.error('Please verify your domain at resend.com/domains to send emails to other recipients.', { id: loadingToast });
+              } else {
+                toast.error(errorMsg || 'Failed to send report', { id: loadingToast });
+              }
+            } else {
+              toast.success('Your report has been sent successfully.', { id: loadingToast });
+              setShowEmailDialog(false);
+            }
+          } catch (error: any) {
             console.error('Error sending email:', error);
-            toast.error('Failed to send report', { id: loadingToast });
+            toast.error(error.message || 'Failed to send report', { id: loadingToast });
           } finally {
             setIsSendingEmail(false);
           }

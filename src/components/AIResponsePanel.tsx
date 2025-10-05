@@ -98,7 +98,13 @@ export function AIResponsePanel({ responses, isLoading = false, onChartCapture }
 
       {/* Content Area */}
       <ScrollArea className="flex-1 p-4">
-        {responses.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center text-muted-foreground py-8">
+            <Bot className="h-12 w-12 mx-auto mb-3 opacity-50 animate-pulse" />
+            <p className="text-sm">Loading previous analysis...</p>
+            <p className="text-xs mt-1">Please wait</p>
+          </div>
+        ) : responses.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p className="text-sm">No responses yet</p>

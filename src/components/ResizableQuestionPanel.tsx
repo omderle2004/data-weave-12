@@ -35,6 +35,7 @@ interface ResizableQuestionPanelProps {
   data?: any[][];
   columns?: string[];
   onQuestionResponse?: (question: string, response: AIResponse) => void;
+  loadingAnalysis?: boolean;
 }
 
 export function ResizableQuestionPanel({ 
@@ -44,10 +45,12 @@ export function ResizableQuestionPanel({
   children,
   data = [],
   columns = [],
-  onQuestionResponse
+  onQuestionResponse,
+  loadingAnalysis = false
 }: ResizableQuestionPanelProps) {
   const [aiResponses, setAiResponses] = useState<AIResponse[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [questionMap, setQuestionMap] = useState<Map<string, string>>(new Map()); // Maps response ID to question
 
   const handleVoiceTranscription = (text: string) => {
     setChatMessage((prev: string) => prev + (prev ? ' ' : '') + text);
@@ -62,27 +65,22 @@ export function ResizableQuestionPanel({
 
   const handleChartCapture = (responseId: string, imageData: string) => {
     // Update the response with the chart image
-    setAiResponses(prev => {
-      const updated = prev.map(response => 
+    setAiResponses(prev => 
+      prev.map(response => 
         response.id === responseId 
           ? { ...response, chartImage: imageData }
           : response
-      );
-      
-      // Find the updated response and notify parent
-      const updatedResponse = updated.find(r => r.id === responseId);
-      if (updatedResponse && onQuestionResponse) {
-        // Find the original question for this response
-        const responseIndex = prev.findIndex(r => r.id === responseId);
-        if (responseIndex !== -1) {
-          // We need to store questions alongside responses to match them later
-          // For now, we'll trigger an update with the full response
-          onQuestionResponse('', updatedResponse);
-        }
-      }
-      
-      return updated;
-    });
+      )
+    );
+    
+    // Get the question for this response
+    const question = questionMap.get(responseId);
+    
+    // Find the updated response and notify parent
+    const updatedResponse = aiResponses.find(r => r.id === responseId);
+    if (updatedResponse && question && onQuestionResponse) {
+      onQuestionResponse(question, { ...updatedResponse, chartImage: imageData });
+    }
   };
 
   const handleSendMessage = async () => {
@@ -123,6 +121,9 @@ export function ResizableQuestionPanel({
       };
 
       setAiResponses(prev => [...prev, newResponse]);
+      
+      // Store the question for this response
+      setQuestionMap(prev => new Map(prev).set(newResponse.id, currentQuestion));
       
       // Notify parent component about the question and response
       if (onQuestionResponse) {
@@ -225,7 +226,7 @@ export function ResizableQuestionPanel({
             <div className="w-[42%] min-w-[420px] h-full border-t border-border">
               <AIResponsePanel 
                 responses={aiResponses} 
-                isLoading={isAiLoading}
+                isLoading={isAiLoading || loadingAnalysis}
                 onChartCapture={handleChartCapture}
               />
             </div>

@@ -93,12 +93,14 @@ export default function SpreadsheetEditor() {
   const [showBIDashboard, setShowBIDashboard] = useState(false);
   const [showDataPreprocessing, setShowDataPreprocessing] = useState(false);
   const [questionResponsePairs, setQuestionResponsePairs] = useState<QuestionResponsePair[]>([]);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
   // Load project data if projectId exists
   useEffect(() => {
     const loadProject = async () => {
       if (projectId && user) {
         try {
+          setLoadingAnalysis(true);
           const { data: project, error } = await supabase
             .from('projects')
             .select('*')
@@ -127,7 +129,8 @@ export default function SpreadsheetEditor() {
 
           if (analysisError) {
             console.error('Error loading analysis results:', analysisError);
-          } else if (analysisData) {
+            toast.error('Failed to load previous analysis');
+          } else if (analysisData && analysisData.length > 0) {
             const loadedPairs: QuestionResponsePair[] = analysisData.map((item: any) => ({
               question: item.question,
               response: {
@@ -136,11 +139,14 @@ export default function SpreadsheetEditor() {
               }
             }));
             setQuestionResponsePairs(loadedPairs);
+            toast.success(`Loaded ${loadedPairs.length} previous analysis`);
           }
         } catch (error) {
           console.error('Error loading project:', error);
           toast.error('Failed to load project');
           navigate('/dashboard');
+        } finally {
+          setLoadingAnalysis(false);
         }
       } else {
         // Check URL params to auto-open import modal for new projects
@@ -704,33 +710,36 @@ export default function SpreadsheetEditor() {
             onSendMessage={handleSendMessage}
             data={importedData || []}
             columns={importedData && importedData.length > 0 ? importedData[0].map((header, index) => header?.toString() || `Column ${index + 1}`) : []}
+            loadingAnalysis={loadingAnalysis}
             onQuestionResponse={async (question, response) => {
-              // If question is empty, this is a chart image update for an existing response
-              if (!question) {
-                // Update existing response with chart image
-                setQuestionResponsePairs(prev => 
-                  prev.map(pair => 
-                    pair.response.id === response.id 
-                      ? { ...pair, response }
-                      : pair
-                  )
+              // If question is provided, this is a new response or chart update with question
+              if (question) {
+                // Check if this is updating an existing response (chart image added)
+                const existingPairIndex = questionResponsePairs.findIndex(
+                  pair => pair.response.id === response.id
                 );
                 
-                // Update in database
-                if (projectId && user) {
-                  try {
-                    const { data: existingRecords } = await supabase
-                      .from('analysis_results')
-                      .select('*')
-                      .eq('project_id', projectId)
-                      .eq('user_id', user.id);
-                    
-                    if (existingRecords) {
-                      const recordToUpdate = existingRecords.find(
-                        (record: any) => record.response_data?.id === response.id
-                      );
+                if (existingPairIndex !== -1) {
+                  // Update existing response
+                  setQuestionResponsePairs(prev => 
+                    prev.map((pair, idx) => 
+                      idx === existingPairIndex 
+                        ? { ...pair, response }
+                        : pair
+                    )
+                  );
+                  
+                  // Update in database
+                  if (projectId && user) {
+                    try {
+                      const { data: existingRecords } = await supabase
+                        .from('analysis_results')
+                        .select('*')
+                        .eq('project_id', projectId)
+                        .eq('user_id', user.id)
+                        .eq('question', question);
                       
-                      if (recordToUpdate) {
+                      if (existingRecords && existingRecords.length > 0) {
                         await supabase
                           .from('analysis_results')
                           .update({
@@ -739,32 +748,32 @@ export default function SpreadsheetEditor() {
                               timestamp: response.timestamp.toISOString()
                             }
                           })
-                          .eq('id', recordToUpdate.id);
+                          .eq('id', existingRecords[0].id);
                       }
+                    } catch (error) {
+                      console.error('Error updating chart image:', error);
                     }
-                  } catch (error) {
-                    console.error('Error updating chart image:', error);
                   }
-                }
-              } else {
-                // New question-response pair
-                const newPair = { question, response };
-                setQuestionResponsePairs(prev => [...prev, newPair]);
+                } else {
+                  // New question-response pair
+                  const newPair = { question, response };
+                  setQuestionResponsePairs(prev => [...prev, newPair]);
 
-                // Save to database
-                if (projectId && user) {
-                  try {
-                    await supabase.from('analysis_results').insert({
-                      project_id: projectId,
-                      user_id: user.id,
-                      question: question,
-                      response_data: {
-                        ...response,
-                        timestamp: response.timestamp.toISOString()
-                      }
-                    });
-                  } catch (error) {
-                    console.error('Error saving analysis result:', error);
+                  // Save to database
+                  if (projectId && user) {
+                    try {
+                      await supabase.from('analysis_results').insert({
+                        project_id: projectId,
+                        user_id: user.id,
+                        question: question,
+                        response_data: {
+                          ...response,
+                          timestamp: response.timestamp.toISOString()
+                        }
+                      });
+                    } catch (error) {
+                      console.error('Error saving analysis result:', error);
+                    }
                   }
                 }
               }

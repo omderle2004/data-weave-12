@@ -820,8 +820,33 @@ export default function SpreadsheetEditor() {
         isOpen={showDataPreprocessing} 
         onClose={() => setShowDataPreprocessing(false)}
         importedData={importedData}
-        onDataUpdate={(newData) => {
+        projectId={currentProjectId || undefined}
+        onDataUpdate={async (newData) => {
+          // Update UI immediately
           handleDataImport(newData, currentProjectId || undefined);
+          
+          // Save to database permanently
+          if (currentProjectId) {
+            try {
+              const { error } = await supabase
+                .from('projects')
+                .update({ 
+                  spreadsheet_data: newData,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', currentProjectId);
+
+              if (error) {
+                console.error('Error saving cleaned data:', error);
+                toast.error('Failed to save cleaned data permanently');
+              } else {
+                toast.success('Data saved permanently');
+              }
+            } catch (error) {
+              console.error('Error saving cleaned data:', error);
+              toast.error('Failed to save cleaned data');
+            }
+          }
         }}
       />
     </div>

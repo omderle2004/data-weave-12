@@ -20,10 +20,11 @@ interface DataPreprocessingModalProps {
   isOpen: boolean;
   onClose: () => void;
   importedData?: string[][] | null;
+  projectId?: string;
   onDataUpdate?: (newData: string[][]) => void;
 }
 
-export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUpdate }: DataPreprocessingModalProps) {
+export function DataPreprocessingModal({ isOpen, onClose, importedData, projectId, onDataUpdate }: DataPreprocessingModalProps) {
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [qualityScore, setQualityScore] = useState(0);
   const [hasData, setHasData] = useState(false);
@@ -421,6 +422,7 @@ export function DataPreprocessingModal({ isOpen, onClose, importedData, onDataUp
         isOpen={showAIFixPanel} 
         onBack={() => setShowAIFixPanel(false)}
         importedData={importedData}
+        projectId={projectId}
         onDataUpdate={onDataUpdate}
         onDataCleaned={() => {
           // Re-analyze data after cleaning

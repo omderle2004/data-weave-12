@@ -178,7 +178,11 @@ export function AIResponsePanel({ responses, isLoading = false, onChartCapture }
 
                     {/* Display chart if available */}
                     {response.chartData && response.chartType && (
-                      <div className="mb-3" ref={(el) => el && chartRefs.current.set(response.id, el)}>
+                      <div 
+                        className="mb-3" 
+                        ref={(el) => el && chartRefs.current.set(response.id, el)}
+                        data-chart-id={response.id}
+                      >
                         <div className="text-xs font-medium text-primary mb-2">{response.chartTitle}</div>
                         <ScrollArea className="h-64 w-full">
                           <div className="min-w-full h-64">

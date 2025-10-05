@@ -541,13 +541,15 @@ export default function SpreadsheetEditor() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-background border border-border z-50">
                 <DropdownMenuItem onClick={async () => {
-                  toast.success('Generating PDF report...');
+                  const loadingToast = toast.loading('Capturing charts and generating PDF report...');
                   try {
+                    // Wait a bit for charts to render if just loaded
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     await generateAnalysisReport(projectName, questionResponsePairs);
-                    toast.success('Report downloaded successfully!');
+                    toast.success('Report downloaded successfully!', { id: loadingToast });
                   } catch (error) {
                     console.error('Error generating report:', error);
-                    toast.error('Failed to generate report');
+                    toast.error('Failed to generate report', { id: loadingToast });
                   }
                 }}>
                   <FileText className="h-4 w-4 mr-2" />

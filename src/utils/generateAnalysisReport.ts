@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import smartbizLogo from '@/assets/smartbiz-logo.png';
 
 interface AIResponse {
@@ -23,6 +24,26 @@ interface AIResponse {
 interface QuestionResponsePair {
   question: string;
   response: AIResponse;
+}
+
+// Helper function to capture chart as image
+async function captureChartImage(responseId: string): Promise<string | null> {
+  const chartElements = document.querySelectorAll('[data-chart-id]');
+  for (const element of chartElements) {
+    if (element.getAttribute('data-chart-id') === responseId) {
+      try {
+        const canvas = await html2canvas(element as HTMLElement, {
+          backgroundColor: '#ffffff',
+          scale: 2
+        });
+        return canvas.toDataURL('image/png');
+      } catch (error) {
+        console.error('Error capturing chart:', error);
+        return null;
+      }
+    }
+  }
+  return null;
 }
 
 export async function generateAnalysisReport(
@@ -86,6 +107,17 @@ export async function generateAnalysisReport(
     pdf.setFont('helvetica', 'italic');
     pdf.text('No analysis found. Please ask a question to generate insights.', 20, yPosition);
   } else {
+    // Capture chart images before generating PDF
+    for (let index = 0; index < questionResponsePairs.length; index++) {
+      const pair = questionResponsePairs[index];
+      if (pair.response.chartData && pair.response.chartType && !pair.response.chartImage) {
+        const chartImage = await captureChartImage(pair.response.id);
+        if (chartImage) {
+          pair.response.chartImage = chartImage;
+        }
+      }
+    }
+    
     // Add each question and response
     for (let index = 0; index < questionResponsePairs.length; index++) {
       const pair = questionResponsePairs[index];

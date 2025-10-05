@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateAnalysisReport } from '@/utils/generateAnalysisReport';
+import { generatePDFBase64 } from '@/utils/generatePDFBase64';
+import { EmailShareDialog } from '@/components/EmailShareDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,6 +96,8 @@ export default function SpreadsheetEditor() {
   const [showDataPreprocessing, setShowDataPreprocessing] = useState(false);
   const [questionResponsePairs, setQuestionResponsePairs] = useState<QuestionResponsePair[]>([]);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Load project data if projectId exists
   useEffect(() => {
@@ -561,7 +565,7 @@ export default function SpreadsheetEditor() {
                   <FileText className="h-4 w-4 mr-2" />
                   Download Analysis Report
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.success('Opening email dialog...')}>
+                <DropdownMenuItem onClick={() => setShowEmailDialog(true)}>
                   <Mail className="h-4 w-4 mr-2" />
                   Share via Email
                 </DropdownMenuItem>
@@ -977,6 +981,49 @@ export default function SpreadsheetEditor() {
               console.error('Error saving cleaned data:', error);
               toast.error('Failed to save cleaned data');
             }
+          }
+        }}
+      />
+
+      <EmailShareDialog
+        open={showEmailDialog}
+        onOpenChange={setShowEmailDialog}
+        userEmail={user?.email || ''}
+        isSending={isSendingEmail}
+        onSend={async (recipientEmail) => {
+          setIsSendingEmail(true);
+          const loadingToast = toast.loading('Preparing and sending report...');
+          
+          try {
+            const hasAnalysis = questionResponsePairs.length > 0;
+            let pdfBase64: string | undefined;
+
+            // Generate PDF if analysis exists
+            if (hasAnalysis) {
+              // Wait for charts to render
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              pdfBase64 = await generatePDFBase64(projectName, questionResponsePairs);
+            }
+
+            // Call edge function to send email
+            const { data, error } = await supabase.functions.invoke('send-analysis-report', {
+              body: {
+                recipientEmail,
+                projectName,
+                pdfBase64,
+                hasAnalysis,
+              }
+            });
+
+            if (error) throw error;
+
+            toast.success('Your report has been sent successfully.', { id: loadingToast });
+            setShowEmailDialog(false);
+          } catch (error) {
+            console.error('Error sending email:', error);
+            toast.error('Failed to send report', { id: loadingToast });
+          } finally {
+            setIsSendingEmail(false);
           }
         }}
       />

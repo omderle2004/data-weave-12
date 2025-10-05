@@ -33,6 +33,7 @@ interface ResizableQuestionPanelProps {
   children: React.ReactNode;
   data?: any[][];
   columns?: string[];
+  onQuestionResponse?: (question: string, response: AIResponse) => void;
 }
 
 export function ResizableQuestionPanel({ 
@@ -41,7 +42,8 @@ export function ResizableQuestionPanel({
   onSendMessage,
   children,
   data = [],
-  columns = []
+  columns = [],
+  onQuestionResponse
 }: ResizableQuestionPanelProps) {
   const [aiResponses, setAiResponses] = useState<AIResponse[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -60,6 +62,7 @@ export function ResizableQuestionPanel({
   const handleSendMessage = async () => {
     if (!chatMessage.trim()) return;
     
+    const currentQuestion = chatMessage;
     setIsAiLoading(true);
     
     try {
@@ -94,6 +97,11 @@ export function ResizableQuestionPanel({
       };
 
       setAiResponses(prev => [...prev, newResponse]);
+      
+      // Notify parent component about the question and response
+      if (onQuestionResponse) {
+        onQuestionResponse(currentQuestion, newResponse);
+      }
       
     } catch (error) {
       console.error('Error getting AI response:', error);

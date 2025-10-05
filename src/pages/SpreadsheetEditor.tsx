@@ -24,6 +24,7 @@ import { DataPreprocessingModal } from "@/components/DataPreprocessingModal";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { generateAnalysisReport } from '@/utils/generateAnalysisReport';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,29 @@ interface Cell {
   language?: 'python' | 'javascript' | 'formula';
 }
 
+interface AIResponse {
+  id: string;
+  type: 'text' | 'code' | 'chart' | 'image' | 'table';
+  content: string;
+  timestamp: Date;
+  chartData?: any[];
+  chartType?: string;
+  chartTitle?: string;
+  insights?: string[];
+  statistics?: any;
+  tableData?: {
+    title: string;
+    columns: string[];
+    rows: string[][];
+  };
+  intent?: string;
+}
+
+interface QuestionResponsePair {
+  question: string;
+  response: AIResponse;
+}
+
 export default function SpreadsheetEditor() {
   const navigate = useNavigate();
   const { projectId } = useParams();
@@ -68,6 +92,7 @@ export default function SpreadsheetEditor() {
   const [activeView, setActiveView] = useState<'analyze' | 'dashboard'>('analyze');
   const [showBIDashboard, setShowBIDashboard] = useState(false);
   const [showDataPreprocessing, setShowDataPreprocessing] = useState(false);
+  const [questionResponsePairs, setQuestionResponsePairs] = useState<QuestionResponsePair[]>([]);
 
   // Load project data if projectId exists
   useEffect(() => {
@@ -495,7 +520,16 @@ export default function SpreadsheetEditor() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-background border border-border z-50">
-                <DropdownMenuItem onClick={() => toast.success('Generating PDF report...')}>
+                <DropdownMenuItem onClick={async () => {
+                  toast.success('Generating PDF report...');
+                  try {
+                    await generateAnalysisReport(projectName, questionResponsePairs);
+                    toast.success('Report downloaded successfully!');
+                  } catch (error) {
+                    console.error('Error generating report:', error);
+                    toast.error('Failed to generate report');
+                  }
+                }}>
                   <FileText className="h-4 w-4 mr-2" />
                   Download Analysis Report
                 </DropdownMenuItem>
@@ -648,6 +682,9 @@ export default function SpreadsheetEditor() {
             onSendMessage={handleSendMessage}
             data={importedData || []}
             columns={importedData && importedData.length > 0 ? importedData[0].map((header, index) => header?.toString() || `Column ${index + 1}`) : []}
+            onQuestionResponse={(question, response) => {
+              setQuestionResponsePairs(prev => [...prev, { question, response }]);
+            }}
           >
             {/* Spreadsheet Grid */}
             <div className="h-full overflow-auto relative bg-background">

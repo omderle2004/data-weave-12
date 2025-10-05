@@ -1,0 +1,165 @@
+import jsPDF from 'jspdf';
+import smartbizLogo from '@/assets/smartbiz-logo.png';
+
+interface AIResponse {
+  id: string;
+  type: 'text' | 'code' | 'chart' | 'image' | 'table';
+  content: string;
+  timestamp: Date;
+  chartData?: any[];
+  chartType?: string;
+  chartTitle?: string;
+  insights?: string[];
+  statistics?: any;
+  tableData?: {
+    title: string;
+    columns: string[];
+    rows: string[][];
+  };
+  intent?: string;
+}
+
+interface QuestionResponsePair {
+  question: string;
+  response: AIResponse;
+}
+
+export async function generateAnalysisReport(
+  projectName: string,
+  questionResponsePairs: QuestionResponsePair[]
+) {
+  const pdf = new jsPDF();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  let yPosition = 20;
+
+  // Add logo at the top
+  try {
+    const img = new Image();
+    img.src = smartbizLogo;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    
+    // Add logo (centered, 30x30)
+    const logoSize = 30;
+    const logoX = (pageWidth - logoSize) / 2;
+    pdf.addImage(img, 'PNG', logoX, yPosition, logoSize, logoSize);
+    yPosition += logoSize + 10;
+  } catch (error) {
+    console.error('Error loading logo:', error);
+    yPosition += 10;
+  }
+
+  // Add title
+  pdf.setFontSize(20);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('SmartBiz Analysis Report', pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 15;
+
+  // Add project name
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Project: ${projectName}`, 20, yPosition);
+  yPosition += 10;
+
+  // Add date
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  pdf.text(`Generated: ${currentDate}`, 20, yPosition);
+  yPosition += 15;
+
+  // Add section header
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('SmartBiz Output – Your Virtual Analyst', 20, yPosition);
+  yPosition += 10;
+
+  // Check if there are any responses
+  if (!questionResponsePairs || questionResponsePairs.length === 0) {
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'italic');
+    pdf.text('No analysis found. Please ask a question to generate insights.', 20, yPosition);
+  } else {
+    // Add each question and response
+    questionResponsePairs.forEach((pair, index) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - 40) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      // Add question number and text
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`Q${index + 1}: ${pair.question}`, 20, yPosition);
+      yPosition += 8;
+
+      // Add response
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(11);
+
+      // Split long text into lines
+      const responseText = pair.response.content || 'No response';
+      const lines = pdf.splitTextToSize(responseText, pageWidth - 40);
+      
+      lines.forEach((line: string) => {
+        if (yPosition > pageHeight - 20) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(line, 20, yPosition);
+        yPosition += 6;
+      });
+
+      // Add insights if available
+      if (pair.response.insights && pair.response.insights.length > 0) {
+        yPosition += 5;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Key Insights:', 20, yPosition);
+        yPosition += 6;
+        pdf.setFont('helvetica', 'normal');
+
+        pair.response.insights.forEach((insight) => {
+          if (yPosition > pageHeight - 20) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          const insightLines = pdf.splitTextToSize(`• ${insight}`, pageWidth - 45);
+          insightLines.forEach((line: string) => {
+            pdf.text(line, 25, yPosition);
+            yPosition += 6;
+          });
+        });
+      }
+
+      // Add statistics if available
+      if (pair.response.statistics) {
+        yPosition += 5;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Statistics:', 20, yPosition);
+        yPosition += 6;
+        pdf.setFont('helvetica', 'normal');
+
+        Object.entries(pair.response.statistics).forEach(([key, value]) => {
+          if (yPosition > pageHeight - 20) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          pdf.text(`${key}: ${value}`, 25, yPosition);
+          yPosition += 6;
+        });
+      }
+
+      yPosition += 10; // Space between Q&A pairs
+    });
+  }
+
+  // Save the PDF
+  const fileName = `${projectName.replace(/\s+/g, '_')}_Analysis_Report_${new Date().getTime()}.pdf`;
+  pdf.save(fileName);
+}

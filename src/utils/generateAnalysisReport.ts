@@ -9,6 +9,7 @@ interface AIResponse {
   chartData?: any[];
   chartType?: string;
   chartTitle?: string;
+  chartImage?: string; // Base64 image data for embedding in PDF
   insights?: string[];
   statistics?: any;
   tableData?: {
@@ -118,8 +119,32 @@ export async function generateAnalysisReport(
         yPosition += 6;
       }
 
-      // Add chart information if available
-      if (pair.response.chartType && pair.response.chartTitle) {
+      // Add chart visualization if available
+      if (pair.response.chartImage) {
+        yPosition += 5;
+        if (yPosition > pageHeight - 100) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Chart Visualization:', 20, yPosition);
+        yPosition += 8;
+        
+        try {
+          // Add the chart image to PDF
+          const chartWidth = pageWidth - 40;
+          const chartHeight = 80; // Fixed height for charts
+          pdf.addImage(pair.response.chartImage, 'PNG', 20, yPosition, chartWidth, chartHeight);
+          yPosition += chartHeight + 10;
+        } catch (error) {
+          console.error('Error adding chart image:', error);
+          pdf.setFont('helvetica', 'italic');
+          pdf.text('Chart visualization unavailable', 25, yPosition);
+          yPosition += 6;
+        }
+      } else if (pair.response.chartType && pair.response.chartTitle) {
+        // Fallback: show chart metadata if image not available
         yPosition += 5;
         if (yPosition > pageHeight - 30) {
           pdf.addPage();
@@ -135,7 +160,6 @@ export async function generateAnalysisReport(
         pdf.text(`Title: ${pair.response.chartTitle}`, 25, yPosition);
         yPosition += 6;
         
-        // Add chart data summary if available
         if (pair.response.chartData && pair.response.chartData.length > 0) {
           pdf.text(`Data Points: ${pair.response.chartData.length}`, 25, yPosition);
           yPosition += 6;

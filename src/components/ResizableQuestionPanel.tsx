@@ -16,6 +16,7 @@ interface AIResponse {
   chartData?: any[];
   chartType?: string;
   chartTitle?: string;
+  chartImage?: string;
   insights?: string[];
   statistics?: any;
   tableData?: {

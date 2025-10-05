@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Code, BarChart3, FileText, Image, TrendingUp, Info } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import html2canvas from 'html2canvas';
 
 interface AIResponse {
   id: string;
@@ -13,6 +14,7 @@ interface AIResponse {
   chartData?: any[];
   chartType?: string;
   chartTitle?: string;
+  chartImage?: string;
   insights?: string[];
   statistics?: any;
   tableData?: {
@@ -26,9 +28,35 @@ interface AIResponse {
 interface AIResponsePanelProps {
   responses: AIResponse[];
   isLoading?: boolean;
+  onChartCapture?: (responseId: string, imageData: string) => void;
 }
 
-export function AIResponsePanel({ responses, isLoading = false }: AIResponsePanelProps) {
+export function AIResponsePanel({ responses, isLoading = false, onChartCapture }: AIResponsePanelProps) {
+  const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Capture charts as images when they're rendered
+  useEffect(() => {
+    responses.forEach(async (response) => {
+      if (response.chartData && response.chartType && onChartCapture && !response.chartImage) {
+        const chartElement = chartRefs.current.get(response.id);
+        if (chartElement) {
+          try {
+            // Wait a bit for chart to fully render
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const canvas = await html2canvas(chartElement, {
+              backgroundColor: '#ffffff',
+              scale: 2
+            });
+            const imageData = canvas.toDataURL('image/png');
+            onChartCapture(response.id, imageData);
+          } catch (error) {
+            console.error('Error capturing chart:', error);
+          }
+        }
+      }
+    });
+  }, [responses, onChartCapture]);
+
   const getResponseIcon = (type: string) => {
     switch (type) {
       case 'code': return <Code className="h-4 w-4" />;
@@ -150,7 +178,7 @@ export function AIResponsePanel({ responses, isLoading = false }: AIResponsePane
 
                     {/* Display chart if available */}
                     {response.chartData && response.chartType && (
-                      <div className="mb-3">
+                      <div className="mb-3" ref={(el) => el && chartRefs.current.set(response.id, el)}>
                         <div className="text-xs font-medium text-primary mb-2">{response.chartTitle}</div>
                         <ScrollArea className="h-64 w-full">
                           <div className="min-w-full h-64">

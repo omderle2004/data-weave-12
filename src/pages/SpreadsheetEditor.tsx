@@ -117,6 +117,26 @@ export default function SpreadsheetEditor() {
             setProjectName(project.name);
             handleDataImport(project.spreadsheet_data, project.id);
           }
+
+          // Load saved analysis results
+          const { data: analysisData, error: analysisError } = await supabase
+            .from('analysis_results')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: true });
+
+          if (analysisError) {
+            console.error('Error loading analysis results:', analysisError);
+          } else if (analysisData) {
+            const loadedPairs: QuestionResponsePair[] = analysisData.map((item: any) => ({
+              question: item.question,
+              response: {
+                ...item.response_data,
+                timestamp: new Date(item.response_data.timestamp)
+              }
+            }));
+            setQuestionResponsePairs(loadedPairs);
+          }
         } catch (error) {
           console.error('Error loading project:', error);
           toast.error('Failed to load project');
@@ -682,8 +702,26 @@ export default function SpreadsheetEditor() {
             onSendMessage={handleSendMessage}
             data={importedData || []}
             columns={importedData && importedData.length > 0 ? importedData[0].map((header, index) => header?.toString() || `Column ${index + 1}`) : []}
-            onQuestionResponse={(question, response) => {
-              setQuestionResponsePairs(prev => [...prev, { question, response }]);
+            onQuestionResponse={async (question, response) => {
+              const newPair = { question, response };
+              setQuestionResponsePairs(prev => [...prev, newPair]);
+
+              // Save to database
+              if (projectId && user) {
+                try {
+                  await supabase.from('analysis_results').insert({
+                    project_id: projectId,
+                    user_id: user.id,
+                    question: question,
+                    response_data: {
+                      ...response,
+                      timestamp: response.timestamp.toISOString()
+                    }
+                  });
+                } catch (error) {
+                  console.error('Error saving analysis result:', error);
+                }
+              }
             }}
           >
             {/* Spreadsheet Grid */}

@@ -60,6 +60,31 @@ export function ResizableQuestionPanel({
     }
   };
 
+  const handleChartCapture = (responseId: string, imageData: string) => {
+    // Update the response with the chart image
+    setAiResponses(prev => {
+      const updated = prev.map(response => 
+        response.id === responseId 
+          ? { ...response, chartImage: imageData }
+          : response
+      );
+      
+      // Find the updated response and notify parent
+      const updatedResponse = updated.find(r => r.id === responseId);
+      if (updatedResponse && onQuestionResponse) {
+        // Find the original question for this response
+        const responseIndex = prev.findIndex(r => r.id === responseId);
+        if (responseIndex !== -1) {
+          // We need to store questions alongside responses to match them later
+          // For now, we'll trigger an update with the full response
+          onQuestionResponse('', updatedResponse);
+        }
+      }
+      
+      return updated;
+    });
+  };
+
   const handleSendMessage = async () => {
     if (!chatMessage.trim()) return;
     
@@ -198,7 +223,11 @@ export function ResizableQuestionPanel({
             
             {/* Output Section - Columns F-P (42% of total width, fixed position) */}
             <div className="w-[42%] min-w-[420px] h-full border-t border-border">
-              <AIResponsePanel responses={aiResponses} isLoading={isAiLoading} />
+              <AIResponsePanel 
+                responses={aiResponses} 
+                isLoading={isAiLoading}
+                onChartCapture={handleChartCapture}
+              />
             </div>
             
             {/* Spacer for remaining columns Q-Z */}

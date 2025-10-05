@@ -711,6 +711,7 @@ export default function SpreadsheetEditor() {
             data={importedData || []}
             columns={importedData && importedData.length > 0 ? importedData[0].map((header, index) => header?.toString() || `Column ${index + 1}`) : []}
             loadingAnalysis={loadingAnalysis}
+            previousResponses={questionResponsePairs.map(pair => pair.response)}
             onQuestionResponse={async (question, response) => {
               // If question is provided, this is a new response or chart update with question
               if (question) {

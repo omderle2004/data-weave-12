@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +36,7 @@ interface ResizableQuestionPanelProps {
   columns?: string[];
   onQuestionResponse?: (question: string, response: AIResponse) => void;
   loadingAnalysis?: boolean;
+  previousResponses?: AIResponse[]; // Add this to receive loaded responses
 }
 
 export function ResizableQuestionPanel({ 
@@ -46,11 +47,19 @@ export function ResizableQuestionPanel({
   data = [],
   columns = [],
   onQuestionResponse,
-  loadingAnalysis = false
+  loadingAnalysis = false,
+  previousResponses = []
 }: ResizableQuestionPanelProps) {
-  const [aiResponses, setAiResponses] = useState<AIResponse[]>([]);
+  const [aiResponses, setAiResponses] = useState<AIResponse[]>(previousResponses);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [questionMap, setQuestionMap] = useState<Map<string, string>>(new Map()); // Maps response ID to question
+
+  // Update responses when previousResponses changes (on load from database)
+  useEffect(() => {
+    if (previousResponses.length > 0) {
+      setAiResponses(previousResponses);
+    }
+  }, [previousResponses]);
 
   const handleVoiceTranscription = (text: string) => {
     setChatMessage((prev: string) => prev + (prev ? ' ' : '') + text);
